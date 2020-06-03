@@ -1,0 +1,72 @@
+// Copyright 2020 The gRPC Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.grpc.examples.wallet";
+option java_outer_classname = "WalletProto";
+
+package grpc.examples.wallet;
+
+service Wallet {
+  // Unary RPC to fetch balancer of the account.
+  rpc FetchBalance(BalanceRequest) returns (BalanceResponse) {}
+  // Server streaming RPC to watch the balance of the account.
+  rpc WatchBalance(BalanceRequest) returns (stream BalanceResponse) {}
+}
+
+message BalancePerAddress {
+  string address = 1;
+  int64 balance = 2;
+}
+
+message BalanceRequest {
+  bool include_balance_per_address = 1;
+}
+message BalanceResponse {
+  int64 balance = 1;
+  repeated BalancePerAddress addresses = 2;
+}
+
+service Account {
+  // GetUserInfo returns the account info (premium or not) for a token.
+  rpc GetUserInfo(GetUserInfoRequest) returns (GetUserInfoResponse) {}
+}
+
+message GetUserInfoRequest {
+  string token = 1;
+}
+
+enum MembershipType {
+  UNKNOWN_MEMBERSHIP_TYPE = 0;
+  NORMAL = 1;
+  PREMIUM = 2;
+}
+
+message GetUserInfoResponse {
+  string name = 1;
+  MembershipType membership = 2;
+}
+
+service Stats {
+  rpc FetchPrice(PriceRequest) returns (PriceResponse) {}
+  rpc WatchPrice(PriceRequest) returns (stream PriceResponse) {}
+}
+
+message PriceRequest {
+}
+
+message PriceResponse {
+  int64 price = 1;
+}
