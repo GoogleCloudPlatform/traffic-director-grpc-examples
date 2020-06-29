@@ -30,6 +30,9 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.StatusRuntimeException;
+import io.grpc.examples.wallet.stats.PriceRequest;
+import io.grpc.examples.wallet.stats.PriceResponse;
+import io.grpc.examples.wallet.stats.StatsGrpc;
 import java.util.Iterator;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -39,6 +42,9 @@ import java.util.logging.Logger;
 /** A client for the gRPC Wallet example. */
 public class Client {
   private static final Logger logger = Logger.getLogger(Client.class.getName());
+
+  static final String ALICE_TOKEN = "2bd806c9";
+  static final String BOB_TOKEN = "81b637d8";
 
   private String command;
   private String walletServer = "localhost:18881";
@@ -61,10 +67,10 @@ public class Client {
 
     Metadata headers = new Metadata();
     if ("Alice".equals(user)) {
-      headers.put(WalletServerInterceptor.TOKEN_MD_KEY, "2bd806c9");
+      headers.put(WalletServerInterceptor.TOKEN_MD_KEY, ALICE_TOKEN);
       headers.put(WalletServerInterceptor.PREMIUM_MD_KEY, "premium");
     } else {
-      headers.put(WalletServerInterceptor.TOKEN_MD_KEY, "81b637d8");
+      headers.put(WalletServerInterceptor.TOKEN_MD_KEY, BOB_TOKEN);
       headers.put(WalletServerInterceptor.PREMIUM_MD_KEY, "normal");
     }
     AtomicReference<String> remoteHostname = new AtomicReference<>();
@@ -209,7 +215,7 @@ public class Client {
               + c.user
               + "\n  --watch=true|false        Whether to call the streaming RPC. Default "
               + c.watch
-              + "\n --unary_watch=true|false   Watch for balance updates with unary RPC"
+              + "\n  --unary_watch=true|false  Watch for balance updates with unary RPC"
               + " in loop (only applies to balance "
               + "\n                            command). Requires watch=false."
               + " Default "

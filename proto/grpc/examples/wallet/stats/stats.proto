@@ -14,27 +14,19 @@
 syntax = "proto3";
 
 option java_multiple_files = true;
-option java_package = "io.grpc.examples.wallet";
-option java_outer_classname = "WalletProto";
+option java_package = "io.grpc.examples.wallet.stats";
+option java_outer_classname = "StatsProto";
 
-package grpc.examples.wallet;
+package grpc.examples.wallet.stats;
 
-service Wallet {
-  // Unary RPC to fetch balancer of the account.
-  rpc FetchBalance(BalanceRequest) returns (BalanceResponse) {}
-  // Server streaming RPC to watch the balance of the account.
-  rpc WatchBalance(BalanceRequest) returns (stream BalanceResponse) {}
+service Stats {
+  rpc FetchPrice(PriceRequest) returns (PriceResponse) {}
+  rpc WatchPrice(PriceRequest) returns (stream PriceResponse) {}
 }
 
-message BalancePerAddress {
-  string address = 1;
-  int64 balance = 2;
+message PriceRequest {
 }
 
-message BalanceRequest {
-  bool include_balance_per_address = 1;
-}
-message BalanceResponse {
-  int64 balance = 1;
-  repeated BalancePerAddress addresses = 2;
+message PriceResponse {
+  int64 price = 1;
 }

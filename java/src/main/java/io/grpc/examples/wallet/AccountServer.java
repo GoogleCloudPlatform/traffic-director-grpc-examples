@@ -23,6 +23,10 @@ import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import io.grpc.examples.wallet.account.AccountGrpc;
+import io.grpc.examples.wallet.account.GetUserInfoRequest;
+import io.grpc.examples.wallet.account.GetUserInfoResponse;
+import io.grpc.examples.wallet.account.MembershipType;
 import java.io.IOException;
 import java.util.logging.Logger;
 
@@ -70,7 +74,7 @@ public class AccountServer {
       System.out.println(
           "Usage: [ARGS...]"
               + "\n"
-              + "\n  --port=PORT          The port to listen on. Default "
+              + "\n  --port=PORT            The port to listen on. Default "
               + s.port
               + "\n  --hostname_suffix=STR  Suffix to append to hostname in response header. "
               + "Default \""
@@ -131,9 +135,9 @@ public class AccountServer {
         GetUserInfoRequest req, StreamObserver<GetUserInfoResponse> responseObserver) {
       String token = req.getToken();
       GetUserInfoResponse.Builder response = GetUserInfoResponse.newBuilder();
-      if ("2bd806c9".equals(token)) {
+      if (Client.ALICE_TOKEN.equals(token)) {
         response.setName("Alice").setMembership(MembershipType.PREMIUM);
-      } else if ("81b637d8".equals(token)) {
+      } else if (Client.BOB_TOKEN.equals(token)) {
         response.setName("Bob").setMembership(MembershipType.NORMAL);
       } else {
         responseObserver.onError(
