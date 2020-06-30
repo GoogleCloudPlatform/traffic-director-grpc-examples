@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 The gRPC Authors
+ * Copyright 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,6 @@ import io.grpc.examples.wallet.stats.PriceResponse;
 import io.grpc.examples.wallet.stats.StatsGrpc;
 import java.util.Iterator;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -52,7 +51,6 @@ public class Client {
   private String user = "Alice";
   private boolean watch;
   private boolean unaryWatch;
-  private boolean hostnamePrinted;
 
   public void run() throws InterruptedException, ExecutionException {
     logger.info("Will try to run " + command);
@@ -73,10 +71,8 @@ public class Client {
       headers.put(WalletServerInterceptor.TOKEN_MD_KEY, BOB_TOKEN);
       headers.put(WalletServerInterceptor.PREMIUM_MD_KEY, "normal");
     }
-    AtomicReference<String> remoteHostname = new AtomicReference<>();
     Channel channel =
-        ClientInterceptors.intercept(
-            managedChannel, new HeaderClientInterceptor(headers, remoteHostname));
+        ClientInterceptors.intercept(managedChannel, new HeaderClientInterceptor(headers));
 
     try {
       if ("price".equals(command)) {
@@ -85,12 +81,10 @@ public class Client {
           Iterator<PriceResponse> responses =
               blockingStub.watchPrice(PriceRequest.getDefaultInstance());
           while (responses.hasNext()) {
-            printHostnameOnce(remoteHostname);
             printPriceResponse(responses.next());
           }
         } else {
           PriceResponse response = blockingStub.fetchPrice(PriceRequest.getDefaultInstance());
-          printHostnameOnce(remoteHostname);
           printPriceResponse(response);
         }
       } else {
@@ -100,19 +94,16 @@ public class Client {
         if (watch) {
           Iterator<BalanceResponse> responses = blockingStub.watchBalance(request);
           while (responses.hasNext()) {
-            printHostnameOnce(remoteHostname);
             printBalanceResponse(responses.next());
           }
         } else if (unaryWatch) {
           while (true) {
             BalanceResponse response = blockingStub.fetchBalance(request);
-            printHostnameOnce(remoteHostname);
             printBalanceResponse(response);
             Thread.sleep(1000);
           }
         } else {
             BalanceResponse response = blockingStub.fetchBalance(request);
-            printHostnameOnce(remoteHostname);
             printBalanceResponse(response);
         }
       }
@@ -121,13 +112,6 @@ public class Client {
       return;
     } finally {
       managedChannel.shutdownNow().awaitTermination(5, SECONDS);
-    }
-  }
-
-  private void printHostnameOnce(AtomicReference<String> remoteHostname) {
-    if (!hostnamePrinted) {
-      System.out.println("server host: " + remoteHostname.get());
-      hostnamePrinted = true;
     }
   }
 
@@ -232,11 +216,9 @@ public class Client {
 
   private static class HeaderClientInterceptor implements ClientInterceptor {
     Metadata headersToAdd;
-    AtomicReference<String> remoteHostname;
 
-    HeaderClientInterceptor(Metadata headersToAdd, AtomicReference<String> remoteHostname) {
+    HeaderClientInterceptor(Metadata headersToAdd) {
       this.headersToAdd = headersToAdd;
-      this.remoteHostname = remoteHostname;
     }
 
     @Override
@@ -251,7 +233,8 @@ public class Client {
               new SimpleForwardingClientCallListener<RespT>(responseListener) {
                 @Override
                 public void onHeaders(Metadata headers) {
-                  remoteHostname.set(headers.get(WalletServerInterceptor.HOSTNAME_MD_KEY));
+                  System.out.println(
+                      "server host: " + headers.get(WalletServerInterceptor.HOSTNAME_MD_KEY));
                   super.onHeaders(headers);
                 }
               },

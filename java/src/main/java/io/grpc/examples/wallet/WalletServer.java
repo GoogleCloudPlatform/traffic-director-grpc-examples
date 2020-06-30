@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 The gRPC Authors
+ * Copyright 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,8 +27,6 @@ import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import io.grpc.stub.MetadataUtils;
-import io.grpc.stub.StreamObserver;
 import io.grpc.examples.wallet.account.AccountGrpc;
 import io.grpc.examples.wallet.account.GetUserInfoRequest;
 import io.grpc.examples.wallet.account.GetUserInfoResponse;
@@ -36,6 +34,8 @@ import io.grpc.examples.wallet.account.MembershipType;
 import io.grpc.examples.wallet.stats.PriceRequest;
 import io.grpc.examples.wallet.stats.PriceResponse;
 import io.grpc.examples.wallet.stats.StatsGrpc;
+import io.grpc.stub.MetadataUtils;
+import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
@@ -190,7 +190,7 @@ public class WalletServer {
             accountBlockingStub.getUserInfo(
                 GetUserInfoRequest.newBuilder().setToken(token).build());
       } catch (StatusRuntimeException e) {
-        logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
+        logger.log(Level.WARNING, "Account RPC failed: {0}", e.getStatus());
         throw Status.INTERNAL
             .withDescription("Failed to connect to account server " + e.getMessage())
             .asRuntimeException();
@@ -217,7 +217,6 @@ public class WalletServer {
         long balance = entry.getValue() * price;
         totalBalance += balance;
         if (!v1Behavior && includeBalancePerAddress) {
-
           response.addAddresses(
               BalancePerAddress.newBuilder().setAddress(entry.getKey()).setBalance(balance));
         }
@@ -290,10 +289,10 @@ public class WalletServer {
                 wallet, response.getPrice(), request.getIncludeBalancePerAddress()));
         responseObserver.onCompleted();
       } catch (StatusRuntimeException e) {
-        logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
+        logger.log(Level.WARNING, "Stats RPC failed: {0}", e.getStatus());
         responseObserver.onError(
             Status.INTERNAL
-                .withDescription("Failed to connect to stats server: " + e.getMessage())
+                .withDescription("RPC to stats server failed: " + e.getMessage())
                 .asRuntimeException());
         return;
       }
