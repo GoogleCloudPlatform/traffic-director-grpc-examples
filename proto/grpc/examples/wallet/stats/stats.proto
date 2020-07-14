@@ -13,6 +13,7 @@
 // limitations under the License.
 syntax = "proto3";
 
+option go_package = "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/stats";
 option java_multiple_files = true;
 option java_package = "io.grpc.examples.wallet.stats";
 option java_outer_classname = "StatsProto";
