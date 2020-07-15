@@ -36,6 +36,9 @@ import io.grpc.examples.wallet.account.MembershipType;
 import io.grpc.examples.wallet.stats.PriceRequest;
 import io.grpc.examples.wallet.stats.PriceResponse;
 import io.grpc.examples.wallet.stats.StatsGrpc;
+import io.grpc.health.v1.HealthCheckResponse.ServingStatus;
+import io.grpc.protobuf.services.ProtoReflectionService;
+import io.grpc.services.HealthStatusManager;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
@@ -114,14 +117,18 @@ public class StatsServer {
   private void start() throws IOException {
     accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
     exec = MoreExecutors.listeningDecorator(Executors.newSingleThreadScheduledExecutor());
+    HealthStatusManager health = new HealthStatusManager();
     server =
         ServerBuilder.forPort(port)
             .addService(
                 ServerInterceptors.intercept(
                     new StatsImpl(accountChannel, exec, premiumOnly),
                     new WalletServerInterceptor()))
+            .addService(ProtoReflectionService.newInstance())
+            .addService(health.getHealthService())
             .build()
             .start();
+    health.setStatus("", ServingStatus.SERVING);
     logger.info("Server started, listening on " + port);
     Runtime.getRuntime()
         .addShutdownHook(

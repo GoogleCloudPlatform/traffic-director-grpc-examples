@@ -28,8 +28,13 @@ import (
 	"google.golang.org/grpc/codes"
 	accountpb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/account"
 	"google.golang.org/grpc/grpc-wallet/utility"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
+
+	_ "google.golang.org/grpc/xds" // To enable xds support.
 )
 
 type user struct {
@@ -86,6 +91,10 @@ func main() {
 	}
 	s := grpc.NewServer()
 	accountpb.RegisterAccountServer(s, &server{hostname: utility.GenHostname(args.hostnameSuffix)})
+	reflection.Register(s)
+	healthServer := health.NewServer()
+	healthServer.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
+	healthpb.RegisterHealthServer(s, healthServer)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}

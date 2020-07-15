@@ -32,6 +32,8 @@ import (
 	statspb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/stats"
 	"google.golang.org/grpc/grpc-wallet/utility"
 	"google.golang.org/grpc/metadata"
+
+	_ "google.golang.org/grpc/xds" // To enable xds support.
 )
 
 var users = map[string]map[string]string{

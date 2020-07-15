@@ -32,8 +32,13 @@ import (
 	accountpb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/account"
 	statspb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/stats"
 	"google.golang.org/grpc/grpc-wallet/utility"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
+
+	_ "google.golang.org/grpc/xds" // To enable xds support.
 )
 
 var users = map[string]map[string]int{
@@ -171,7 +176,7 @@ func main() {
 	args := parseArguments()
 
 	// Dial account server.
-	accountConn, err := grpc.Dial(args.accountServer, grpc.WithInsecure(), grpc.WithBlock())
+	accountConn, err := grpc.Dial(args.accountServer, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v.", err)
 	}
@@ -179,7 +184,7 @@ func main() {
 	accountClient := accountpb.NewAccountClient(accountConn)
 
 	// Dial stats server.
-	statsConn, err := grpc.Dial(args.statsServer, grpc.WithInsecure(), grpc.WithBlock())
+	statsConn, err := grpc.Dial(args.statsServer, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v.", err)
 	}
@@ -198,6 +203,10 @@ func main() {
 		accountClient: accountClient,
 		statsClient:   statsClient,
 	})
+	reflection.Register(s)
+	healthServer := health.NewServer()
+	healthServer.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
+	healthpb.RegisterHealthServer(s, healthServer)
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}
