@@ -60,27 +60,45 @@ var args arguments
 
 // parseArguments parses the command line arguments using the flag package.
 func parseArguments() {
-	flags := flag.NewFlagSet("balance", flag.ExitOnError)
-	flags.StringVar(&args.walletServer, "wallet_server", "localhost:18881", "address of the wallet service, default 'localhost:18881'")
-	flags.StringVar(&args.statsServer, "stats_server", "localhost:18882", "address of the stats service, default 'localhost:18882'")
-	flags.StringVar(&args.user, "user", "Alice", "the name of the user account, default 'Alice'")
-	flags.BoolVar(&args.watch, "watch", false, "if the balance/price should be watched rather than queried once, default false")
-	flags.BoolVar(&args.unaryWatch, "unary_watch", false, "if the balance/price should be watched but with repeated unary RPCs rather than a streaming rpc, default false")
+	flag.StringVar(&args.walletServer, "wallet_server", "localhost:18881", "address of the wallet service, default 'localhost:18881'")
+	flag.StringVar(&args.statsServer, "stats_server", "localhost:18882", "address of the stats service, default 'localhost:18882'")
+	flag.StringVar(&args.user, "user", "Alice", "the name of the user account, default 'Alice'")
+	flag.BoolVar(&args.watch, "watch", false, "if the balance/price should be watched rather than queried once, default false")
+	flag.BoolVar(&args.unaryWatch, "unary_watch", false, "if the balance/price should be watched but with repeated unary RPCs rather than a streaming rpc, default false")
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), `
+subcommands:
+  balance
+	print balance of the wallet
+  price
+	print price of grpc-coin
+
+flags
+`)
+		flag.PrintDefaults()
+	}
+	flag.Parse()
+
 	if len(os.Args) < 2 {
+		flag.Usage()
 		log.Fatalln("no subcommand.")
 	}
 	args.subcommand = os.Args[1]
 	if args.subcommand != "balance" && args.subcommand != "price" {
+		flag.Usage()
 		log.Fatalf("unrecognized subcommand '%s'.", args.subcommand)
 	}
-	flags.Parse(os.Args[2:])
 	if args.user != "Alice" && args.user != "Bob" {
+		flag.Usage()
 		log.Fatalf("unrecognized user '%s'.", args.user)
 	}
 	if args.watch && args.unaryWatch {
+		flag.Usage()
 		log.Fatalln("unary_watch incompatible with watch.")
 	}
 	if args.subcommand == "price" && args.unaryWatch {
+		flag.Usage()
 		log.Fatalln("unary_watch incompatible with price subcommand.")
 	}
 }
