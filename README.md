@@ -1,3 +1,5 @@
+Disclaimer: This is not an officially supported Google product.
+
 # gRPC examples: grpc-wallet
 
 This repository contains example services for gRPC.
