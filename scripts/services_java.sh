@@ -60,7 +60,6 @@ set -x
 # This script is to be used with the examples doc [url]. The account service is
 # created manually. This script only creates the remaining services.
 
-# new_service account 50053 account
 new_service stats   50052 stats         '--account_server="xds:///account.grpcwallet.io"'
 new_service stats   50052 stats-premium '--account_server="xds:///account.grpcwallet.io" --premium_only=true'
 new_service wallet  50051 wallet-v1     '--account_server="xds:///account.grpcwallet.io" --stats_server="xds:///stats.grpcwallet.io" --v1_behavior=true'
