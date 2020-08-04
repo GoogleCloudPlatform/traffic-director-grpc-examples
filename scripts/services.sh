@@ -1,19 +1,34 @@
 #!/bin/bash
 
 function new_service() {
-    # $1 = service type
-    # $2 = port number
-    # $3 = hostname suffix
-    # $4 = additional command line arguments
-    typ=$1
-    port=$2
-    hostname_suffix=$3
-    arguments=$4
+    # $1 = language
+    # $2 = service type
+    # $3 = port number
+    # $4 = hostname suffix
+    # $5 = additional command line arguments
+    typ=$2
+    port=$3
+    hostname_suffix=$4
+    arguments=$5
 
-    build_script="cd traffic-director-grpc-examples-master/java
+    case $1 in
+        go)
+            build_script="cd traffic-director-grpc-examples-master/go/${typ}_server/
+sudo apt-get install -y golang git
+go build ."
+            server="./${typ}_server"
+            ;;
+        java)
+            build_script="cd traffic-director-grpc-examples-master/java
 sudo apt-get install -y openjdk-11-jdk-headless
 ./gradlew installDist"
-    server="./build/install/wallet/bin/${typ}-server"
+            server="./build/install/wallet/bin/${typ}-server"
+            ;;
+        *)
+            echo "undefined language"
+            exit 123
+            ;;
+    esac
 
     startup_script="#! /bin/bash
 set -ex
@@ -57,10 +72,7 @@ sudo systemd-run -E GRPC_XDS_BOOTSTRAP=/root/td-grpc-bootstrap.json ${server} --
 
 set -x
 
-# This script is to be used with the examples doc [url]. The account service is
-# created manually. This script only creates the remaining services.
-
-new_service stats   50052 stats         '--account_server="xds:///account.grpcwallet.io"'
-new_service stats   50052 stats-premium '--account_server="xds:///account.grpcwallet.io" --premium_only=true'
-new_service wallet  50051 wallet-v1     '--account_server="xds:///account.grpcwallet.io" --stats_server="xds:///stats.grpcwallet.io" --v1_behavior=true'
-new_service wallet  50051 wallet-v2     '--account_server="xds:///account.grpcwallet.io" --stats_server="xds:///stats.grpcwallet.io"'
+new_service go   stats   50052 stats         '--account_server="xds:///account.grpcwallet.io"'
+new_service go   stats   50052 stats-premium '--account_server="xds:///account.grpcwallet.io" --premium_only=true'
+new_service java wallet  50051 wallet-v1     '--account_server="xds:///account.grpcwallet.io" --stats_server="xds:///stats.grpcwallet.io" --v1_behavior=true'
+new_service java wallet  50051 wallet-v2     '--account_server="xds:///account.grpcwallet.io" --stats_server="xds:///stats.grpcwallet.io"'
