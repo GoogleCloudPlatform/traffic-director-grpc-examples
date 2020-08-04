@@ -1,3 +1,5 @@
+#!/bin/bash
+
 function new_health_check() {
     gcloud compute health-checks create grpc grpcwallet-health-check \
     --use-serving-port
@@ -146,3 +148,15 @@ EOF
     --ports 80 \
     --network default
 }
+
+set -x
+
+# $1 = language, one of "java" or "go"
+
+new_health_check
+new_service $1 account 50053 account
+new_service $1 stats   50052 stats         '--account_server="xds:///account.grpcwallet.io"'
+new_service $1 stats   50052 stats-premium '--account_server="xds:///account.grpcwallet.io" --premium_only=true'
+new_service $1 wallet  50051 wallet-v1     '--account_server="xds:///account.grpcwallet.io" --stats_server="xds:///stats.grpcwallet.io" --v1_behavior=true'
+new_service $1 wallet  50051 wallet-v2     '--account_server="xds:///account.grpcwallet.io" --stats_server="xds:///stats.grpcwallet.io"'
+new_td_resources
