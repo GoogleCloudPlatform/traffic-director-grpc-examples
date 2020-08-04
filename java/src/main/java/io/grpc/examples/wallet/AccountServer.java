@@ -93,7 +93,7 @@ public class AccountServer {
         ServerBuilder.forPort(port)
             .addService(
                 ServerInterceptors.intercept(
-                    new AccountImpl(), new WalletServerInterceptor()))
+                    new AccountImpl(), new WalletInterceptors.HostnameInterceptor()))
             .addService(ProtoReflectionService.newInstance())
             .addService(health.getHealthService())
             .build()

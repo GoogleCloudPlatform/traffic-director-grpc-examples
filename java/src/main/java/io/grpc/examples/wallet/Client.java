@@ -65,11 +65,11 @@ public class Client {
 
     Metadata headers = new Metadata();
     if ("Alice".equals(user)) {
-      headers.put(WalletServerInterceptor.TOKEN_MD_KEY, ALICE_TOKEN);
-      headers.put(WalletServerInterceptor.PREMIUM_MD_KEY, "premium");
+      headers.put(WalletInterceptors.TOKEN_MD_KEY, ALICE_TOKEN);
+      headers.put(WalletInterceptors.MEMBERSHIP_MD_KEY, "premium");
     } else {
-      headers.put(WalletServerInterceptor.TOKEN_MD_KEY, BOB_TOKEN);
-      headers.put(WalletServerInterceptor.PREMIUM_MD_KEY, "normal");
+      headers.put(WalletInterceptors.TOKEN_MD_KEY, BOB_TOKEN);
+      headers.put(WalletInterceptors.MEMBERSHIP_MD_KEY, "normal");
     }
     Channel channel =
         ClientInterceptors.intercept(managedChannel, new HeaderClientInterceptor(headers));
@@ -234,7 +234,7 @@ public class Client {
                 @Override
                 public void onHeaders(Metadata headers) {
                   System.out.println(
-                      "server host: " + headers.get(WalletServerInterceptor.HOSTNAME_MD_KEY));
+                      "server host: " + headers.get(WalletInterceptors.HOSTNAME_MD_KEY));
                   super.onHeaders(headers);
                 }
               },

@@ -126,7 +126,8 @@ public class WalletServer {
             .addService(
                 ServerInterceptors.intercept(
                     new WalletImpl(accountChannel, statsChannel, v1Behavior),
-                    new WalletServerInterceptor()))
+                    new WalletInterceptors.HostnameInterceptor(),
+                    new WalletInterceptors.AuthInterceptor()))
             .addService(ProtoReflectionService.newInstance())
             .addService(health.getHealthService())
             .build()
@@ -190,7 +191,8 @@ public class WalletServer {
       this.v1Behavior = v1Behavior;
     }
 
-    private ImmutableMap<String, Long> validatePremiumAndGetWallet(String token, String premium) {
+    private ImmutableMap<String, Long> validateMembershipAndGetWallet(
+        String token, String membership) {
       GetUserInfoResponse userInfo;
       try {
         userInfo =
@@ -202,7 +204,7 @@ public class WalletServer {
             .withDescription("Failed to connect to account server " + e.getMessage())
             .asRuntimeException();
       }
-      if ("premium".equals(premium) && userInfo.getMembership() != MembershipType.PREMIUM) {
+      if ("premium".equals(membership) && userInfo.getMembership() != MembershipType.PREMIUM) {
         throw Status.UNAUTHENTICATED
             .withDescription("Token does not belong to a premium member")
             .asRuntimeException();
@@ -234,20 +236,20 @@ public class WalletServer {
     @Override
     public void watchBalance(
         BalanceRequest request, StreamObserver<BalanceResponse> responseObserver) {
-      String token = WalletServerInterceptor.TOKEN_KEY.get();
-      String premium = WalletServerInterceptor.PREMIUM_KEY.get();
+      String token = WalletInterceptors.TOKEN_KEY.get();
+      String membership = WalletInterceptors.MEMBERSHIP_KEY.get();
 
       Map<String, Long> wallet;
       try {
-        wallet = validatePremiumAndGetWallet(token, premium);
+        wallet = validateMembershipAndGetWallet(token, membership);
       } catch (StatusRuntimeException e) {
         responseObserver.onError(e);
         return;
       }
 
       Metadata headers = new Metadata();
-      headers.put(WalletServerInterceptor.TOKEN_MD_KEY, token);
-      headers.put(WalletServerInterceptor.PREMIUM_MD_KEY, premium);
+      headers.put(WalletInterceptors.TOKEN_MD_KEY, token);
+      headers.put(WalletInterceptors.MEMBERSHIP_MD_KEY, membership);
 
       StatsGrpc.StatsBlockingStub stubWithHeaders =
           MetadataUtils.attachHeaders(statsBlockingStub, headers);
@@ -271,20 +273,20 @@ public class WalletServer {
     @Override
     public void fetchBalance(
         BalanceRequest request, StreamObserver<BalanceResponse> responseObserver) {
-      String token = WalletServerInterceptor.TOKEN_KEY.get();
-      String premium = WalletServerInterceptor.PREMIUM_KEY.get();
+      String token = WalletInterceptors.TOKEN_KEY.get();
+      String membership = WalletInterceptors.MEMBERSHIP_KEY.get();
 
       Map<String, Long> wallet;
       try {
-        wallet = validatePremiumAndGetWallet(token, premium);
+        wallet = validateMembershipAndGetWallet(token, membership);
       } catch (StatusRuntimeException e) {
         responseObserver.onError(e);
         return;
       }
 
       Metadata headers = new Metadata();
-      headers.put(WalletServerInterceptor.TOKEN_MD_KEY, token);
-      headers.put(WalletServerInterceptor.PREMIUM_MD_KEY, premium);
+      headers.put(WalletInterceptors.TOKEN_MD_KEY, token);
+      headers.put(WalletInterceptors.MEMBERSHIP_MD_KEY, membership);
 
       StatsGrpc.StatsBlockingStub stubWithHeaders =
           MetadataUtils.attachHeaders(statsBlockingStub, headers);
