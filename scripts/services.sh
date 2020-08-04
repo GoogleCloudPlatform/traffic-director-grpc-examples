@@ -12,22 +12,22 @@ function new_service() {
     arguments=$5
 
     case $1 in
-        go)
-            build_script="cd traffic-director-grpc-examples-master/go/${typ}_server/
+      go)
+        build_script="cd traffic-director-grpc-examples-master/go/${typ}_server/
 sudo apt-get install -y golang git
 go build ."
-            server="./${typ}_server"
-            ;;
-        java)
-            build_script="cd traffic-director-grpc-examples-master/java
+        server="./${typ}_server"
+        ;;
+      java)
+        build_script="cd traffic-director-grpc-examples-master/java
 sudo apt-get install -y openjdk-11-jdk-headless
 ./gradlew installDist"
-            server="./build/install/wallet/bin/${typ}-server"
-            ;;
-        *)
-            echo "undefined language"
-            exit 123
-            ;;
+        server="./build/install/wallet/bin/${typ}-server"
+        ;;
+      *)
+        echo "undefined language"
+        exit 123
+        ;;
     esac
 
     startup_script="#! /bin/bash
@@ -48,7 +48,7 @@ sudo systemd-run -E GRPC_XDS_BOOTSTRAP=/root/td-grpc-bootstrap.json ${server} --
       --image-project=debian-cloud \
       --metadata-from-file=startup-script=<(echo "${startup_script}")
 
-     gcloud compute instance-groups managed create grpcwallet-${hostname_suffix}-mig-us-central1 \
+    gcloud compute instance-groups managed create grpcwallet-${hostname_suffix}-mig-us-central1 \
        --zone us-central1-a \
        --size=2 \
        --template=grpcwallet-${hostname_suffix}-template
@@ -72,6 +72,7 @@ sudo systemd-run -E GRPC_XDS_BOOTSTRAP=/root/td-grpc-bootstrap.json ${server} --
 
 set -x
 
+# Create services with different languages. Add more when more languages are supported.
 new_service go   stats   50052 stats         '--account_server="xds:///account.grpcwallet.io"'
 new_service go   stats   50052 stats-premium '--account_server="xds:///account.grpcwallet.io" --premium_only=true'
 new_service java wallet  50051 wallet-v1     '--account_server="xds:///account.grpcwallet.io" --stats_server="xds:///stats.grpcwallet.io" --v1_behavior=true'

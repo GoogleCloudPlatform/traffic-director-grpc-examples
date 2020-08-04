@@ -2,13 +2,13 @@
 
 function new_health_check() {
     gcloud compute health-checks create grpc grpcwallet-health-check \
-    --use-serving-port
+      --use-serving-port
 
     gcloud compute firewall-rules create grpcwallet-allow-health-checks \
-    --network default --action allow --direction INGRESS \
-    --source-ranges 35.191.0.0/16,130.211.0.0/22 \
-    --target-tags allow-health-checks \
-    --rules tcp:50051-50053
+      --network default --action allow --direction INGRESS \
+      --source-ranges 35.191.0.0/16,130.211.0.0/22 \
+      --target-tags allow-health-checks \
+      --rules tcp:50051-50053
 }
 
 function new_service() {
@@ -23,22 +23,22 @@ function new_service() {
     arguments=$5
 
     case $1 in
-        go)
-            build="cd traffic-director-grpc-examples-master/go/${typ}_server/
+      go)
+        build="cd traffic-director-grpc-examples-master/go/${typ}_server/
 sudo apt-get install -y golang git
 go build ."
-            server="./${typ}_server --port=${port} --hostname_suffix=${hostname_suffix} ${arguments}"
-            ;;
-        java)
-            build="cd traffic-director-grpc-examples-master/java
+        server="./${typ}_server --port=${port} --hostname_suffix=${hostname_suffix} ${arguments}"
+        ;;
+      java)
+        build="cd traffic-director-grpc-examples-master/java
 sudo apt-get install -y openjdk-11-jdk-headless
 ./gradlew installDist"
-            server="./build/install/wallet/bin/${typ}-server --port=${port} --hostname_suffix=${hostname_suffix} ${arguments}"
-            ;;
-        *)
-            echo "undefined language"
-            exit 123
-            ;;
+        server="./build/install/wallet/bin/${typ}-server --port=${port} --hostname_suffix=${hostname_suffix} ${arguments}"
+        ;;
+      *)
+        echo "undefined language"
+        exit 123
+        ;;
     esac
 
     gcloud compute instance-templates create grpcwallet-${hostname_suffix}-template \
@@ -49,20 +49,20 @@ sudo apt-get install -y openjdk-11-jdk-headless
       --metadata-from-file=startup-script=<(set -e "s/\${build}/${build}/" -e "s/\${server}/${server}/" startup_script_template.sh)
 
      gcloud compute instance-groups managed create grpcwallet-${hostname_suffix}-mig-us-central1 \
-       --zone us-central1-a \
-       --size=2 \
-       --template=grpcwallet-${hostname_suffix}-template
+      --zone us-central1-a \
+      --size=2 \
+      --template=grpcwallet-${hostname_suffix}-template
 
     gcloud compute instance-groups set-named-ports grpcwallet-${hostname_suffix}-mig-us-central1 \
       --named-ports=grpcwallet-${typ}-port:${port} \
       --zone us-central1-a 
 
     gcloud compute backend-services create grpcwallet-${hostname_suffix}-service \
-        --global \
-        --load-balancing-scheme=INTERNAL_SELF_MANAGED \
-        --protocol=GRPC \
-        --port-name=grpcwallet-${typ}-port \
-        --health-checks grpcwallet-health-check
+      --global \
+      --load-balancing-scheme=INTERNAL_SELF_MANAGED \
+      --protocol=GRPC \
+      --port-name=grpcwallet-${typ}-port \
+      --health-checks grpcwallet-health-check
 
     gcloud compute backend-services add-backend grpcwallet-${hostname_suffix}-service \
       --instance-group grpcwallet-${hostname_suffix}-mig-us-central1 \
@@ -76,21 +76,25 @@ function new_td_resources() {
     gcloud compute url-maps import grpcwallet-url-map --source=<(sed -e "s/\${PROJECT_ID}/${PROJECT_ID}/" url_map_template.yaml)
 
     gcloud compute target-grpc-proxies create grpcwallet-proxy \
-    --url-map grpcwallet-url-map
-    #TODO:   --validate-for-proxyless
+      --url-map grpcwallet-url-map
+      #TODO:   --validate-for-proxyless
 
     gcloud compute forwarding-rules create grpcwallet-forwarding-rule \
-    --global \
-    --load-balancing-scheme=INTERNAL_SELF_MANAGED \
-    --address=0.0.0.0 --address-region=us-central1 \
-    --target-grpc-proxy=grpcwallet-proxy \
-    --ports 80 \
-    --network default
+      --global \
+      --load-balancing-scheme=INTERNAL_SELF_MANAGED \
+      --address=0.0.0.0 --address-region=us-central1 \
+      --target-grpc-proxy=grpcwallet-proxy \
+      --ports 80 \
+      --network default
 }
 
 set -x
 
 # $1 = language, one of "java" or "go"
+if ! [[ $1 =~ ^(go|java)$ ]]; then
+    echo "language $1 is undefined, pick one from [go, java]"
+    exit 123
+fi
 
 new_health_check
 new_service $1 account 50053 account
