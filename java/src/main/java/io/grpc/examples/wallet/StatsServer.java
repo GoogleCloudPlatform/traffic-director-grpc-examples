@@ -123,7 +123,8 @@ public class StatsServer {
             .addService(
                 ServerInterceptors.intercept(
                     new StatsImpl(accountChannel, exec, premiumOnly),
-                    new WalletServerInterceptor()))
+                    new WalletInterceptors.HostnameInterceptor(),
+                    new WalletInterceptors.AuthInterceptor()))
             .addService(ProtoReflectionService.newInstance())
             .addService(health.getHealthService())
             .build()
@@ -185,20 +186,20 @@ public class StatsServer {
       this.premiumOnly = premiumOnly;
     }
 
-    private boolean validatePremium(
-        String token, String premium, StreamObserver<PriceResponse> responseObserver) {
+    private boolean validateMembership(
+        String token, String membership, StreamObserver<PriceResponse> responseObserver) {
       try {
         GetUserInfoResponse response =
             blockingStub.getUserInfo(GetUserInfoRequest.newBuilder().setToken(token).build());
         MembershipType type = response.getMembership();
-        if ("premium".equals(premium) && type != MembershipType.PREMIUM) {
+        if ("premium".equals(membership) && type != MembershipType.PREMIUM) {
           responseObserver.onError(
               Status.UNAUTHENTICATED
                   .withDescription("token does not belong to a premium member")
                   .asRuntimeException());
           return false;
         }
-        if (premiumOnly && !"premium".equals(premium)) {
+        if (premiumOnly && !"premium".equals(membership)) {
           responseObserver.onError(
               Status.PERMISSION_DENIED
                   .withDescription("only premium RPCs are allowed by this service")
@@ -222,13 +223,13 @@ public class StatsServer {
 
     @Override
     public void watchPrice(PriceRequest req, final StreamObserver<PriceResponse> responseObserver) {
-      String token = WalletServerInterceptor.TOKEN_KEY.get();
-      String premium = WalletServerInterceptor.PREMIUM_KEY.get();
-      if (!validatePremium(token, premium, responseObserver)) {
+      String token = WalletInterceptors.TOKEN_KEY.get();
+      String membership = WalletInterceptors.MEMBERSHIP_KEY.get();
+      if (!validateMembership(token, membership, responseObserver)) {
         return;
       }
       int millisecondsBetweenUpdates;
-      if ("premium".equals(premium)) {
+      if ("premium".equals(membership)) {
         millisecondsBetweenUpdates = 100;
       } else {
         millisecondsBetweenUpdates = 1000;
@@ -258,10 +259,10 @@ public class StatsServer {
 
     @Override
     public void fetchPrice(PriceRequest req, StreamObserver<PriceResponse> responseObserver) {
-      String token = WalletServerInterceptor.TOKEN_KEY.get();
-      String premium = WalletServerInterceptor.PREMIUM_KEY.get();
+      String token = WalletInterceptors.TOKEN_KEY.get();
+      String membership = WalletInterceptors.MEMBERSHIP_KEY.get();
 
-      if (!validatePremium(token, premium, responseObserver)) {
+      if (!validateMembership(token, membership, responseObserver)) {
         return;
       }
 
