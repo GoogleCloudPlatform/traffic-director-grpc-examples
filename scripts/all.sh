@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# This script creates all resources needed to demonstrate routing.
+# - health check, for checking backend health
+# - backend services for all services
+# - url-map and other traffic director configuration
+#
+# It takes a parameter to specify the language for the servers. Run as
+# `./all.sh <language>`.
+
 set -x
 
 # $1 = language, one of "java" or "go"

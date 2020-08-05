@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This script configures traffic director to route traffic to different
+# backends. For detailed routing config, see url_map_template.yaml.
+
 set -x
 
 PROJECT_ID=$(gcloud config list --format 'value(core.project)')

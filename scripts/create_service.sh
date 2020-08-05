@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# This script creates a backend service for the specified service/language.
+# - managed instance group
+# - backend service using the instance group
+#
+# Run as `./create_service.sh <lang> <service> <port> <hostname_suffix> <addition_arguments>`.
+
 set -x
 
 language=$1

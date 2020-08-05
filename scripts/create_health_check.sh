@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# This script creates health-check for grpc, and adds a firewall rule to allow
+# health check traffic to the backends.
+
+set -x
+
 gcloud compute health-checks create grpc grpcwallet-health-check \
     --use-serving-port
 
