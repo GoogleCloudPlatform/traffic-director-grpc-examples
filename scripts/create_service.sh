@@ -8,13 +8,13 @@
 
 set -x
 
-language=$1
-service_type=$2
-port=$3
-hostname_suffix=$4
+language="$1"
+service_type="$2"
+port="$3"
+hostname_suffix="$4"
 shift 4 # Remaining arguments ($@) are passed to the server binary.
 
-case $language in
+case "${language}" in
     go)
         build_script="cd \"traffic-director-grpc-examples-master/go/${service_type}_server\"
 sudo apt-get install -y golang git
