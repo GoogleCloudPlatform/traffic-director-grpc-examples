@@ -1,6 +1,8 @@
 #!/bin/bash
 set -x
 
+# This scripts deletes all resources created by this example.
+
 # TD resources
 gcloud compute forwarding-rules delete grpcwallet-forwarding-rule --global -q
 gcloud compute target-grpc-proxies delete grpcwallet-proxy -q
