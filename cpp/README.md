@@ -4,30 +4,30 @@ gRPC CPP Wallet example
 Build the examples:
 
 ```
-bazel build :client :account-server :wallet-server :stats-server
+../tools/bazel build :client :account-server :wallet-server :stats-server
 ```
 
 Run the account server:
 
 ```
-$ ../bazel-bin/account-server
+$ ../bazel-bin/cpp/account-server
 ```
 
 Run the stats server:
 
 ```
-$ ../bazel-bin/stats-server
+$ ../bazel-bin/cpp/stats-server
 ```
 
 Run the wallet server:
 
 ```
-$ ../bazel-bin/wallet-server
+$ ../bazel-bin/cpp/wallet-server
 ```
 
 Run the client:
 
 ```
-$ ../bazel-bin/client balance
-$ ../bazel-bin/client price
+$ ../bazel-bin/cpp/client balance
+$ ../bazel-bin/cpp/client price
 ```

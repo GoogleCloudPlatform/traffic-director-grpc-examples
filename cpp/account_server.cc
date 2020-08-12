@@ -25,12 +25,12 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 
-#include "examples/protos/account.grpc.pb.h"
+#include "proto/grpc/examples/wallet/account/account.grpc.pb.h"
 
-using account::Account;
-using account::GetUserInfoRequest;
-using account::GetUserInfoResponse;
-using account::MembershipType;
+using grpc::examples::wallet::account::Account;
+using grpc::examples::wallet::account::GetUserInfoRequest;
+using grpc::examples::wallet::account::GetUserInfoResponse;
+using grpc::examples::wallet::account::MembershipType;
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
