@@ -21,22 +21,22 @@
 #include <string>
 #include <thread>
 
-#include <grpcpp/grpcpp.h>
+#include <grpc++/grpc++.h>
 
-#include "examples/protos/stats.grpc.pb.h"
-#include "examples/protos/wallet.grpc.pb.h"
+#include "proto/grpc/examples/wallet/stats/stats.grpc.pb.h"
+#include "proto/grpc/examples/wallet/wallet.grpc.pb.h"
 
 using grpc::Channel;
 using grpc::ChannelArguments;
 using grpc::ClientContext;
 using grpc::ClientReader;
 using grpc::Status;
-using stats::PriceRequest;
-using stats::PriceResponse;
-using stats::Stats;
-using wallet::BalanceRequest;
-using wallet::BalanceResponse;
-using wallet::Wallet;
+using grpc::examples::wallet::stats::PriceRequest;
+using grpc::examples::wallet::stats::PriceResponse;
+using grpc::examples::wallet::stats::Stats;
+using grpc::examples::wallet::BalanceRequest;
+using grpc::examples::wallet::BalanceResponse;
+using grpc::examples::wallet::Wallet;
 
 class WalletClient {
  public:

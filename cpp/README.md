@@ -4,7 +4,7 @@ gRPC CPP Wallet example
 Build the examples:
 
 ```
-bazel build :client :account-server :wallet-server :stats-server
+../tools/bazel build :client :account-server :wallet-server :stats-server
 ```
 
 Run the account server:

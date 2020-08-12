@@ -25,14 +25,14 @@
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 
-#include "examples/protos/account.grpc.pb.h"
-#include "examples/protos/stats.grpc.pb.h"
-#include "examples/protos/wallet.grpc.pb.h"
+#include "proto/grpc/examples/wallet/account/account.grpc.pb.h"
+#include "proto/grpc/examples/wallet/stats/stats.grpc.pb.h"
+#include "proto/grpc/examples/wallet/wallet.grpc.pb.h"
 
-using account::Account;
-using account::GetUserInfoRequest;
-using account::GetUserInfoResponse;
-using account::MembershipType;
+using grpc::examples::wallet::account::Account;
+using grpc::examples::wallet::account::GetUserInfoRequest;
+using grpc::examples::wallet::account::GetUserInfoResponse;
+using grpc::examples::wallet::account::MembershipType;
 using grpc::Channel;
 using grpc::ChannelArguments;
 using grpc::ClientContext;
@@ -43,12 +43,12 @@ using grpc::ServerContext;
 using grpc::ServerWriter;
 using grpc::Status;
 using grpc::StatusCode;
-using stats::PriceRequest;
-using stats::PriceResponse;
-using stats::Stats;
-using wallet::BalanceRequest;
-using wallet::BalanceResponse;
-using wallet::Wallet;
+using grpc::examples::wallet::stats::PriceRequest;
+using grpc::examples::wallet::stats::PriceResponse;
+using grpc::examples::wallet::stats::Stats;
+using grpc::examples::wallet::BalanceRequest;
+using grpc::examples::wallet::BalanceResponse;
+using grpc::examples::wallet::Wallet;
 
 class WalletServiceImpl final : public Wallet::Service {
  public:
