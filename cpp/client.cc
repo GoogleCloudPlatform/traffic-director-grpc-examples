@@ -48,6 +48,8 @@ class WalletClient {
     request.set_include_balance_per_address(true);
     BalanceResponse response;
     ClientContext context;
+    // TODO: (@donnadionne) should remove and fix TRANSIENT_FAILURE.
+    context.set_wait_for_ready(true);
     if (user == "Alice") {
       context.AddMetadata("authorization", "2bd806c9");
       context.AddMetadata("membership", "premium");
@@ -83,6 +85,8 @@ class WalletClient {
     request.set_include_balance_per_address(true);
     BalanceResponse response;
     ClientContext context;
+    // TODO: (@donnadionne) should remove and fix TRANSIENT_FAILURE.
+    context.set_wait_for_ready(true);
     if (user == "Alice") {
       context.AddMetadata("authorization", "2bd806c9");
       context.AddMetadata("membership", "premium");
@@ -133,6 +137,8 @@ class StatsClient {
     PriceRequest request;
     PriceResponse response;
     ClientContext context;
+    // TODO: (@donnadionne) should remove and fix TRANSIENT_FAILURE.
+    context.set_wait_for_ready(true);
     if (user == "Alice") {
       context.AddMetadata("authorization", "2bd806c9");
       context.AddMetadata("membership", "premium");
@@ -161,6 +167,8 @@ class StatsClient {
     PriceRequest request;
     PriceResponse response;
     ClientContext context;
+    // TODO: (@donnadionne) should remove and fix TRANSIENT_FAILURE.
+    context.set_wait_for_ready(true);
     if (user == "Alice") {
       context.AddMetadata("authorization", "2bd806c9");
       context.AddMetadata("membership", "premium");

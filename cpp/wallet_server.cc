@@ -76,6 +76,7 @@ class WalletServiceImpl final : public Wallet::Service {
     GetUserInfoRequest request;
     request.set_token(token_);
     ClientContext context;
+    context.set_wait_for_ready(true);
     GetUserInfoResponse response;
     Status status = account_stub_->GetUserInfo(&context, request, &response);
     if (status.ok()) {
@@ -134,6 +135,7 @@ class WalletServiceImpl final : public Wallet::Service {
     }
     context->AddInitialMetadata("hostname", hostname_);
     ClientContext stats_context;
+    stats_context.set_wait_for_ready(true);
     stats_context.AddMetadata("authorization", token_);
     stats_context.AddMetadata("membership", membership_);
     PriceRequest stats_request;
@@ -169,6 +171,7 @@ class WalletServiceImpl final : public Wallet::Service {
     }
     context->AddInitialMetadata("hostname", hostname_);
     ClientContext stats_context;
+    stats_context.set_wait_for_ready(true);
     stats_context.AddMetadata("authorization", token_);
     stats_context.AddMetadata("membership", membership_);
     PriceRequest stats_request;
