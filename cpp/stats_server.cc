@@ -78,6 +78,7 @@ class StatsServiceImpl final : public Stats::Service {
     GetUserInfoRequest request;
     request.set_token(token_);
     ClientContext context;
+    context.set_wait_for_ready(true);
     GetUserInfoResponse response;
     Status status = account_stub_->GetUserInfo(&context, request, &response);
     if (status.ok()) {
