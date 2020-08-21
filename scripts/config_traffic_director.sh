@@ -10,7 +10,7 @@ gcloud compute url-maps import grpcwallet-url-map --source=<(sed -e "s/\${PROJEC
 
 gcloud compute target-grpc-proxies create grpcwallet-proxy \
     --url-map grpcwallet-url-map
-    #TODO:   --validate-for-proxyless
+    --validate-for-proxyless
 
 gcloud compute forwarding-rules create grpcwallet-forwarding-rule \
     --global \
