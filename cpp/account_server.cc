@@ -24,7 +24,10 @@
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
+#include <grpcpp/opencensus.h>
 
+#include "opencensus/exporters/stats/stackdriver/stackdriver_exporter.h"
+#include "opencensus/exporters/trace/stackdriver/stackdriver_exporter.h"
 #include "proto/grpc/examples/wallet/account/account.grpc.pb.h"
 
 using grpc::examples::wallet::account::Account;
@@ -92,8 +95,10 @@ void RunServer(const std::string& port, const std::string& hostname_suffix) {
 int main(int argc, char** argv) {
   std::string port = "50053";
   std::string hostname_suffix = "";
+  std::string observability_project = "";
   std::string arg_str_port("--port");
   std::string arg_str_hostname_suffix("--hostname_suffix");
+  std::string arg_str_observability_project("--observability_project");
   for (int i = 1; i < argc; ++i) {
     std::string arg_val = argv[i];
     size_t start_pos = arg_val.find(arg_str_port);
@@ -119,9 +124,36 @@ int main(int argc, char** argv) {
         return 1;
       }
     }
+    start_pos = arg_val.find(arg_str_observability_project);
+    if (start_pos != std::string::npos) {
+      start_pos += arg_str_observability_project.size();
+      if (arg_val[start_pos] == '=') {
+        observability_project = arg_val.substr(start_pos + 1);
+        continue;
+      } else {
+        std::cout << "The only correct argument syntax is --observability_project=" << std::endl;
+        return 1;
+      }
+    }
   }
   std::cout << "Account Server arguments: port: " << port
-            << ", hostname_suffix: " << hostname_suffix << std::endl;
+            << ", hostname_suffix: " << hostname_suffix
+            << ", observability_project: " << observability_project
+            << std::endl;
+  if (!observability_project.empty()) {
+    grpc::RegisterOpenCensusPlugin();
+    grpc::RegisterOpenCensusViewsForExport();
+    opencensus::trace::TraceConfig::SetCurrentTraceParams(
+        {128, 128, 128, 128, opencensus::trace::ProbabilitySampler(1.0)});
+    opencensus::exporters::trace::StackdriverOptions trace_opts;
+    trace_opts.project_id = observability_project;
+    opencensus::exporters::trace::StackdriverExporter::Register(
+      std::move(trace_opts));
+    opencensus::exporters::stats::StackdriverOptions stats_opts;
+    stats_opts.project_id = observability_project;
+    opencensus::exporters::stats::StackdriverExporter::Register(
+        std::move(stats_opts));
+  }
   RunServer(port, hostname_suffix);
   return 0;
 }
