@@ -29,6 +29,7 @@ import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.grpc.census.explicit.Interceptors;
 import io.grpc.examples.wallet.account.AccountGrpc;
 import io.grpc.examples.wallet.account.GetUserInfoRequest;
 import io.grpc.examples.wallet.account.GetUserInfoResponse;
@@ -55,6 +56,7 @@ public class StatsServer {
   private int port = 18882;
   private String accountServer = "localhost:18883";
   private String hostnameSuffix = "";
+  private String gcpProject = "";
   private boolean premiumOnly;
 
   private ManagedChannel accountChannel;
@@ -86,6 +88,8 @@ public class StatsServer {
         accountServer = value;
       } else if ("hostname_suffix".equals(key)) {
         hostnameSuffix = value;
+      } else if ("gcp_project".equals(key)) {
+        gcpProject = value;
       } else if ("premium_only".equals(key)) {
         premiumOnly = Boolean.parseBoolean(value);
       } else {
@@ -107,6 +111,8 @@ public class StatsServer {
               + "Default \""
               + s.hostnameSuffix
               + "\""
+              + "\n  --gcp_project=STR          Project name. If set, metrics and traces will be "
+              + "sent to Stackdriver. Default \"" + s.gcpProject + "\""
               + "\n  --premium_only=true|false  If true, all non-premium RPCs are rejected. "
               + "Default "
               + s.premiumOnly);
@@ -115,12 +121,21 @@ public class StatsServer {
   }
 
   private void start() throws IOException {
-    accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
+    ManagedChannelBuilder accountChannelBuilder = ManagedChannelBuilder.forTarget(accountServer).usePlaintext();
+    ServerBuilder serverBuilder = ServerBuilder.forPort(port);
+    if (gcpProject != "") {
+      Observability.registerExporters(gcpProject);
+      accountChannelBuilder = accountChannelBuilder.intercept(
+          Interceptors.getStatsClientInterceptor(),
+          Interceptors.getTracingClientInterceptor());
+      serverBuilder
+          .intercept(Interceptors.getStatsServerInterceptor())
+          .intercept(Interceptors.getTracingServerInterceptor());
+    }
+    accountChannel = accountChannelBuilder.build();
     exec = MoreExecutors.listeningDecorator(Executors.newSingleThreadScheduledExecutor());
     HealthStatusManager health = new HealthStatusManager();
-    server =
-        ServerBuilder.forPort(port)
-            .addService(
+    server = serverBuilder.addService(
                 ServerInterceptors.intercept(
                     new StatsImpl(accountChannel, exec, premiumOnly),
                     new WalletInterceptors.HostnameInterceptor(),

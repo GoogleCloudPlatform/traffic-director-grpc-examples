@@ -22,6 +22,7 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
 import io.grpc.Status;
+import io.grpc.census.explicit.Interceptors;
 import io.grpc.examples.wallet.account.AccountGrpc;
 import io.grpc.examples.wallet.account.GetUserInfoRequest;
 import io.grpc.examples.wallet.account.GetUserInfoResponse;
@@ -41,6 +42,7 @@ public class AccountServer {
 
   private int port = 18883;
   private String hostnameSuffix = "";
+  private String gcpProject = "";
 
   void parseArgs(String[] args) {
     boolean usage = false;
@@ -66,6 +68,8 @@ public class AccountServer {
         port = Integer.parseInt(value);
       } else if ("hostname_suffix".equals(key)) {
         hostnameSuffix = value;
+      } else if ("gcp_project".equals(key)) {
+        gcpProject = value;
       } else {
         System.err.println("Unknown argument: " + key);
         usage = true;
@@ -82,16 +86,23 @@ public class AccountServer {
               + "\n  --hostname_suffix=STR  Suffix to append to hostname in response header. "
               + "Default \""
               + s.hostnameSuffix
-              + "\"");
+              + "\""
+              + "\n  --gcp_project=STR      Project name. If set, metrics and traces will be "
+              + "sent to Stackdriver. Default \"" + s.gcpProject + "\"");
       System.exit(1);
     }
   }
 
   private void start() throws IOException {
+    ServerBuilder serverBuilder = ServerBuilder.forPort(port);
+    if (gcpProject != "") {
+      Observability.registerExporters(gcpProject);
+      serverBuilder
+          .intercept(Interceptors.getStatsServerInterceptor())
+          .intercept(Interceptors.getTracingServerInterceptor());
+    }
     HealthStatusManager health = new HealthStatusManager();
-    server =
-        ServerBuilder.forPort(port)
-            .addService(
+    server = serverBuilder.addService(
                 ServerInterceptors.intercept(
                     new AccountImpl(), new WalletInterceptors.HostnameInterceptor()))
             .addService(ProtoReflectionService.newInstance())

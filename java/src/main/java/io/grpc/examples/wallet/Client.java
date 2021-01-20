@@ -30,9 +30,11 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.StatusRuntimeException;
+import io.grpc.census.explicit.Interceptors;
 import io.grpc.examples.wallet.stats.PriceRequest;
 import io.grpc.examples.wallet.stats.PriceResponse;
 import io.grpc.examples.wallet.stats.StatsGrpc;
+import io.opencensus.trace.Tracing;
 import java.util.Iterator;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
@@ -49,6 +51,7 @@ public class Client {
   private String walletServer = "localhost:18881";
   private String statsServer = "localhost:18882";
   private String user = "Alice";
+  private String gcpProject = "";
   private boolean watch;
   private boolean unaryWatch;
 
@@ -61,8 +64,14 @@ public class Client {
     } else {
       target = walletServer;
     }
-    ManagedChannel managedChannel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
 
+    ManagedChannelBuilder builder = ManagedChannelBuilder.forTarget(target).usePlaintext();
+    if (gcpProject != "") {
+      Observability.registerExporters(gcpProject);
+      builder = builder.intercept(Interceptors.getStatsClientInterceptor(),
+          Interceptors.getTracingClientInterceptor());
+    }
+    ManagedChannel managedChannel = builder.build();
     Metadata headers = new Metadata();
     if ("Alice".equals(user)) {
       headers.put(WalletInterceptors.TOKEN_MD_KEY, ALICE_TOKEN);
@@ -112,6 +121,8 @@ public class Client {
       return;
     } finally {
       managedChannel.shutdownNow().awaitTermination(5, SECONDS);
+      // For demo purposes, shutdown the trace exporter to flush any pending traces.
+      Tracing.getExportComponent().shutdown();
     }
   }
 
@@ -170,6 +181,8 @@ public class Client {
           usage = true;
           break;
         }
+      } else if ("gcp_project".equals(key)) {
+        gcpProject = value;
       } else if ("watch".equals(key)) {
         watch = Boolean.parseBoolean(value);
       } else if ("unary_watch".equals(key)) {
@@ -197,6 +210,8 @@ public class Client {
               + c.statsServer
               + "\n  --user=Alice|Bob          The user to call the RPCs. Default "
               + c.user
+              + "\n  --gcp_project=STR         Project name. If set, metrics and traces will be "
+              + "sent to Stackdriver. Default \"" + c.gcpProject + "\""
               + "\n  --watch=true|false        Whether to call the streaming RPC. Default "
               + c.watch
               + "\n  --unary_watch=true|false  Watch for balance updates with unary RPC"
