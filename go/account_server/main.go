@@ -24,9 +24,11 @@ import (
 	"log"
 	"net"
 
+	"go.opencensus.io/plugin/ocgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	accountpb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/account"
+	"google.golang.org/grpc/grpc-wallet/observability"
 	"google.golang.org/grpc/grpc-wallet/utility"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -48,8 +50,9 @@ var users = map[string]user{
 }
 
 type arguments struct {
-	port           string
-	hostnameSuffix string
+	port                 string
+	hostnameSuffix       string
+	observabilityProject string
 }
 
 // parseArguments parses the command line arguments using the flag package.
@@ -57,6 +60,7 @@ func parseArguments() arguments {
 	result := arguments{}
 	flag.StringVar(&result.port, "port", "18883", "the port to listen on, default '18883'")
 	flag.StringVar(&result.hostnameSuffix, "hostname_suffix", "", "suffix to append to hostname in response header for outgoing RPCs, default ''")
+	flag.StringVar(&result.observabilityProject, "observability_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
 	flag.Parse()
 	return result
 }
@@ -85,11 +89,17 @@ func (s *server) GetUserInfo(ctx context.Context, req *accountpb.GetUserInfoRequ
 func main() {
 	args := parseArguments()
 
+	var serverOpts []grpc.ServerOption
+	if args.observabilityProject != "" {
+		observability.ConfigureStackdriver(args.observabilityProject)
+		serverOpts = append(serverOpts, grpc.StatsHandler(&ocgrpc.ServerHandler{}))
+	}
+
 	lis, err := net.Listen("tcp", ":"+args.port)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer()
+	s := grpc.NewServer(serverOpts...)
 	accountpb.RegisterAccountServer(s, &server{hostname: utility.GenHostname(args.hostnameSuffix)})
 	reflection.Register(s)
 	healthServer := health.NewServer()
