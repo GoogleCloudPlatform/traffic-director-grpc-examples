@@ -22,7 +22,6 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
 import io.grpc.Status;
-import io.grpc.census.explicit.Interceptors;
 import io.grpc.examples.wallet.account.AccountGrpc;
 import io.grpc.examples.wallet.account.GetUserInfoRequest;
 import io.grpc.examples.wallet.account.GetUserInfoResponse;
@@ -94,15 +93,13 @@ public class AccountServer {
   }
 
   private void start() throws IOException {
-    ServerBuilder serverBuilder = ServerBuilder.forPort(port);
     if (gcpProject != "") {
       Observability.registerExporters(gcpProject);
-      serverBuilder
-          .intercept(Interceptors.getStatsServerInterceptor())
-          .intercept(Interceptors.getTracingServerInterceptor());
     }
     HealthStatusManager health = new HealthStatusManager();
-    server = serverBuilder.addService(
+    server =
+        ServerBuilder.forPort(port)
+            .addService(
                 ServerInterceptors.intercept(
                     new AccountImpl(), new WalletInterceptors.HostnameInterceptor()))
             .addService(ProtoReflectionService.newInstance())

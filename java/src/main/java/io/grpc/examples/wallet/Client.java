@@ -30,7 +30,6 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.StatusRuntimeException;
-import io.grpc.census.explicit.Interceptors;
 import io.grpc.examples.wallet.stats.PriceRequest;
 import io.grpc.examples.wallet.stats.PriceResponse;
 import io.grpc.examples.wallet.stats.StatsGrpc;
@@ -58,6 +57,10 @@ public class Client {
   public void run() throws InterruptedException, ExecutionException {
     logger.info("Will try to run " + command);
 
+    if (gcpProject != "") {
+      Observability.registerExporters(gcpProject);
+    }
+
     String target;
     if ("price".equals(command)) {
       target = statsServer;
@@ -65,13 +68,7 @@ public class Client {
       target = walletServer;
     }
 
-    ManagedChannelBuilder builder = ManagedChannelBuilder.forTarget(target).usePlaintext();
-    if (gcpProject != "") {
-      Observability.registerExporters(gcpProject);
-      builder = builder.intercept(Interceptors.getStatsClientInterceptor(),
-          Interceptors.getTracingClientInterceptor());
-    }
-    ManagedChannel managedChannel = builder.build();
+    ManagedChannel managedChannel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
     Metadata headers = new Metadata();
     if ("Alice".equals(user)) {
       headers.put(WalletInterceptors.TOKEN_MD_KEY, ALICE_TOKEN);

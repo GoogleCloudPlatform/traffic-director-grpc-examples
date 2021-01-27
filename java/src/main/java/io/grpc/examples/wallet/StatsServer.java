@@ -29,7 +29,6 @@ import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import io.grpc.census.explicit.Interceptors;
 import io.grpc.examples.wallet.account.AccountGrpc;
 import io.grpc.examples.wallet.account.GetUserInfoRequest;
 import io.grpc.examples.wallet.account.GetUserInfoResponse;
@@ -121,21 +120,15 @@ public class StatsServer {
   }
 
   private void start() throws IOException {
-    ManagedChannelBuilder accountChannelBuilder = ManagedChannelBuilder.forTarget(accountServer).usePlaintext();
-    ServerBuilder serverBuilder = ServerBuilder.forPort(port);
     if (gcpProject != "") {
       Observability.registerExporters(gcpProject);
-      accountChannelBuilder = accountChannelBuilder.intercept(
-          Interceptors.getStatsClientInterceptor(),
-          Interceptors.getTracingClientInterceptor());
-      serverBuilder
-          .intercept(Interceptors.getStatsServerInterceptor())
-          .intercept(Interceptors.getTracingServerInterceptor());
     }
-    accountChannel = accountChannelBuilder.build();
+    accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
     exec = MoreExecutors.listeningDecorator(Executors.newSingleThreadScheduledExecutor());
     HealthStatusManager health = new HealthStatusManager();
-    server = serverBuilder.addService(
+    server =
+        ServerBuilder.forPort(port)
+            .addService(
                 ServerInterceptors.intercept(
                     new StatsImpl(accountChannel, exec, premiumOnly),
                     new WalletInterceptors.HostnameInterceptor(),

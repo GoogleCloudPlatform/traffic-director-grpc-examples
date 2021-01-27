@@ -27,7 +27,6 @@ import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import io.grpc.census.explicit.Interceptors;
 import io.grpc.examples.wallet.account.AccountGrpc;
 import io.grpc.examples.wallet.account.GetUserInfoRequest;
 import io.grpc.examples.wallet.account.GetUserInfoResponse;
@@ -124,26 +123,15 @@ public class WalletServer {
   }
 
   private void start() throws IOException {
-    ManagedChannelBuilder accountChannelBuilder = ManagedChannelBuilder.forTarget(accountServer).usePlaintext();
-    ManagedChannelBuilder statsChannelBuilder = ManagedChannelBuilder.forTarget(statsServer).usePlaintext();
-    ServerBuilder serverBuilder = ServerBuilder.forPort(port);
     if (gcpProject != "") {
       Observability.registerExporters(gcpProject);
-      accountChannelBuilder = accountChannelBuilder.intercept(
-          Interceptors.getStatsClientInterceptor(),
-          Interceptors.getTracingClientInterceptor());
-      statsChannelBuilder = statsChannelBuilder.intercept(
-          Interceptors.getStatsClientInterceptor(),
-          Interceptors.getTracingClientInterceptor());
-      serverBuilder
-          .intercept(Interceptors.getStatsServerInterceptor())
-          .intercept(Interceptors.getTracingServerInterceptor());
     }
-    accountChannel = accountChannelBuilder.build();
-    statsChannel = statsChannelBuilder.build();
-
+    accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
+    statsChannel = ManagedChannelBuilder.forTarget(statsServer).usePlaintext().build();
     HealthStatusManager health = new HealthStatusManager();
-    server = serverBuilder.addService(
+    server =
+        ServerBuilder.forPort(port)
+            .addService(
                 ServerInterceptors.intercept(
                     new WalletImpl(accountChannel, statsChannel, v1Behavior),
                     new WalletInterceptors.HostnameInterceptor(),
