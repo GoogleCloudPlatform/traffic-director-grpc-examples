@@ -17,7 +17,6 @@
 package io.grpc.examples.wallet;
 
 
-import io.opencensus.common.Duration;
 import io.opencensus.contrib.grpc.metrics.RpcViews;
 import io.opencensus.exporter.stats.stackdriver.StackdriverStatsConfiguration;
 import io.opencensus.exporter.stats.stackdriver.StackdriverStatsExporter;
@@ -39,7 +38,6 @@ public final class Observability {
       StackdriverStatsExporter.createAndRegister(
           StackdriverStatsConfiguration.builder()
               .setProjectId(gcpProjectId)
-              .setExportInterval(Duration.create(5, 0))
               .build());
 
       // For demo purposes, always sample
