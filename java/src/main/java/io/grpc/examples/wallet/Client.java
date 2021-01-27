@@ -118,8 +118,10 @@ public class Client {
       return;
     } finally {
       managedChannel.shutdownNow().awaitTermination(5, SECONDS);
-      // For demo purposes, shutdown the trace exporter to flush any pending traces.
-      Tracing.getExportComponent().shutdown();
+      if (gcpProject != "") {
+        // For demo purposes, shutdown the trace exporter to flush any pending traces.
+        Tracing.getExportComponent().shutdown();
+      }
     }
   }
 
