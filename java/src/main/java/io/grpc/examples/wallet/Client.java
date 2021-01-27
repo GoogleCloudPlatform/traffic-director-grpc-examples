@@ -50,15 +50,15 @@ public class Client {
   private String walletServer = "localhost:18881";
   private String statsServer = "localhost:18882";
   private String user = "Alice";
-  private String gcpProject = "";
+  private String observabilityProject = "";
   private boolean watch;
   private boolean unaryWatch;
 
   public void run() throws InterruptedException, ExecutionException {
     logger.info("Will try to run " + command);
 
-    if (gcpProject != "") {
-      Observability.registerExporters(gcpProject);
+    if (observabilityProject != "") {
+      Observability.registerExporters(observabilityProject);
     }
 
     String target;
@@ -118,7 +118,7 @@ public class Client {
       return;
     } finally {
       managedChannel.shutdownNow().awaitTermination(5, SECONDS);
-      if (gcpProject != "") {
+      if (observabilityProject != "") {
         // For demo purposes, shutdown the trace exporter to flush any pending traces.
         Tracing.getExportComponent().shutdown();
       }
@@ -180,8 +180,8 @@ public class Client {
           usage = true;
           break;
         }
-      } else if ("gcp_project".equals(key)) {
-        gcpProject = value;
+      } else if ("observability_project".equals(key)) {
+        observabilityProject = value;
       } else if ("watch".equals(key)) {
         watch = Boolean.parseBoolean(value);
       } else if ("unary_watch".equals(key)) {
@@ -209,8 +209,8 @@ public class Client {
               + c.statsServer
               + "\n  --user=Alice|Bob          The user to call the RPCs. Default "
               + c.user
-              + "\n  --gcp_project=STR         Project name. If set, metrics and traces will be "
-              + "sent to Stackdriver. Default \"" + c.gcpProject + "\""
+              + "\n  --observability_project=STR GCP project. If set, metrics and traces will be "
+              + "sent to Stackdriver. Default \"" + c.observabilityProject + "\""
               + "\n  --watch=true|false        Whether to call the streaming RPC. Default "
               + c.watch
               + "\n  --unary_watch=true|false  Watch for balance updates with unary RPC"
