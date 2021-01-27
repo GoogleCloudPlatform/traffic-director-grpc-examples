@@ -16,15 +16,15 @@
  *
  */
 
-#include <unistd.h>
-#include <iostream>
-#include <memory>
-#include <string>
-
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
 #include <grpcpp/opencensus.h>
+#include <unistd.h>
+
+#include <iostream>
+#include <memory>
+#include <string>
 
 #include "opencensus/exporters/stats/stackdriver/stackdriver_exporter.h"
 #include "opencensus/exporters/trace/stackdriver/stackdriver_exporter.h"
@@ -32,10 +32,6 @@
 #include "proto/grpc/examples/wallet/stats/stats.grpc.pb.h"
 #include "proto/grpc/examples/wallet/wallet.grpc.pb.h"
 
-using grpc::examples::wallet::account::Account;
-using grpc::examples::wallet::account::GetUserInfoRequest;
-using grpc::examples::wallet::account::GetUserInfoResponse;
-using grpc::examples::wallet::account::MembershipType;
 using grpc::Channel;
 using grpc::ChannelArguments;
 using grpc::ClientContext;
@@ -46,12 +42,16 @@ using grpc::ServerContext;
 using grpc::ServerWriter;
 using grpc::Status;
 using grpc::StatusCode;
-using grpc::examples::wallet::stats::PriceRequest;
-using grpc::examples::wallet::stats::PriceResponse;
-using grpc::examples::wallet::stats::Stats;
 using grpc::examples::wallet::BalanceRequest;
 using grpc::examples::wallet::BalanceResponse;
 using grpc::examples::wallet::Wallet;
+using grpc::examples::wallet::account::Account;
+using grpc::examples::wallet::account::GetUserInfoRequest;
+using grpc::examples::wallet::account::GetUserInfoResponse;
+using grpc::examples::wallet::account::MembershipType;
+using grpc::examples::wallet::stats::PriceRequest;
+using grpc::examples::wallet::stats::PriceResponse;
+using grpc::examples::wallet::stats::Stats;
 
 class WalletServiceImpl final : public Wallet::Service {
  public:
@@ -351,7 +351,9 @@ int main(int argc, char** argv) {
         observability_project = arg_val.substr(start_pos + 1);
         continue;
       } else {
-        std::cout << "The only correct argument syntax is --observability_project=" << std::endl;
+        std::cout
+            << "The only correct argument syntax is --observability_project="
+            << std::endl;
         return 1;
       }
     }
@@ -371,7 +373,7 @@ int main(int argc, char** argv) {
     opencensus::exporters::trace::StackdriverOptions trace_opts;
     trace_opts.project_id = observability_project;
     opencensus::exporters::trace::StackdriverExporter::Register(
-      std::move(trace_opts));
+        std::move(trace_opts));
     opencensus::exporters::stats::StackdriverOptions stats_opts;
     stats_opts.project_id = observability_project;
     opencensus::exporters::stats::StackdriverExporter::Register(
