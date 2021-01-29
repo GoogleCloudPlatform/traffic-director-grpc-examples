@@ -8,7 +8,11 @@ cc_binary(
         "//:stats_proto",
         "//:wallet_proto",
         "@com_github_grpc_grpc//:grpc++",
-
+        "@com_github_grpc_grpc//:grpc_opencensus_plugin",
+        "@io_opencensus_cpp//opencensus/exporters/stats/stackdriver:stackdriver_exporter",
+        "@io_opencensus_cpp//opencensus/exporters/trace/stackdriver:stackdriver_exporter",
+        "@io_opencensus_cpp//opencensus/stats:stats",
+	      "@io_opencensus_cpp//opencensus/trace:trace",
     ],
 )
 
@@ -22,6 +26,12 @@ cc_binary(
         "//:wallet_proto",
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_grpc_grpc//:grpc++_reflection",
+        "@com_github_grpc_grpc//:grpc_opencensus_plugin",
+        "@io_opencensus_cpp//opencensus/exporters/stats/stackdriver:stackdriver_exporter",
+        "@io_opencensus_cpp//opencensus/exporters/trace/stackdriver:stackdriver_exporter",
+        "@io_opencensus_cpp//opencensus/stats:stats",
+	      "@io_opencensus_cpp//opencensus/trace:trace",
+	      "@io_opencensus_cpp//opencensus/trace:with_span",
     ],
 )
 
@@ -34,6 +44,12 @@ cc_binary(
         "//:stats_proto",
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_grpc_grpc//:grpc++_reflection",
+        "@com_github_grpc_grpc//:grpc_opencensus_plugin",
+        "@io_opencensus_cpp//opencensus/exporters/stats/stackdriver:stackdriver_exporter",
+        "@io_opencensus_cpp//opencensus/exporters/trace/stackdriver:stackdriver_exporter",
+        "@io_opencensus_cpp//opencensus/stats:stats",
+	      "@io_opencensus_cpp//opencensus/trace:trace",
+	      "@io_opencensus_cpp//opencensus/trace:with_span",
     ],
 )
 
@@ -45,5 +61,11 @@ cc_binary(
         "//:account_proto",
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_grpc_grpc//:grpc++_reflection",
+        "@com_github_grpc_grpc//:grpc_opencensus_plugin",
+        "@io_opencensus_cpp//opencensus/exporters/stats/stackdriver:stackdriver_exporter",
+        "@io_opencensus_cpp//opencensus/exporters/trace/stackdriver:stackdriver_exporter",
+        "@io_opencensus_cpp//opencensus/stats:stats",
+	      "@io_opencensus_cpp//opencensus/trace:trace",
+	      "@io_opencensus_cpp//opencensus/trace:with_span",
     ],
 )

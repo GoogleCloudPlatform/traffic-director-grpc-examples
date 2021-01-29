@@ -16,7 +16,12 @@
  *
  */
 
+#include <grpcpp/ext/proto_server_reflection_plugin.h>
+#include <grpcpp/grpcpp.h>
+#include <grpcpp/health_check_service_interface.h>
+#include <grpcpp/opencensus.h>
 #include <unistd.h>
+
 #include <cmath>
 #include <ctime>
 #include <iostream>
@@ -24,20 +29,12 @@
 #include <string>
 #include <thread>
 
-#include <grpcpp/ext/proto_server_reflection_plugin.h>
-#include <grpcpp/grpcpp.h>
-#include <grpcpp/health_check_service_interface.h>
-
+#include "opencensus/exporters/stats/stackdriver/stackdriver_exporter.h"
+#include "opencensus/exporters/trace/stackdriver/stackdriver_exporter.h"
+#include "opencensus/trace/with_span.h"
 #include "proto/grpc/examples/wallet/account/account.grpc.pb.h"
 #include "proto/grpc/examples/wallet/stats/stats.grpc.pb.h"
 
-using grpc::examples::wallet::account::Account;
-using grpc::examples::wallet::account::GetUserInfoRequest;
-using grpc::examples::wallet::account::GetUserInfoResponse;
-using grpc::examples::wallet::account::MembershipType;
-using grpc::examples::wallet::stats::PriceRequest;
-using grpc::examples::wallet::stats::PriceResponse;
-using grpc::examples::wallet::stats::Stats;
 using grpc::Channel;
 using grpc::ChannelArguments;
 using grpc::ClientContext;
@@ -47,6 +44,13 @@ using grpc::ServerContext;
 using grpc::ServerWriter;
 using grpc::Status;
 using grpc::StatusCode;
+using grpc::examples::wallet::account::Account;
+using grpc::examples::wallet::account::GetUserInfoRequest;
+using grpc::examples::wallet::account::GetUserInfoResponse;
+using grpc::examples::wallet::account::MembershipType;
+using grpc::examples::wallet::stats::PriceRequest;
+using grpc::examples::wallet::stats::PriceResponse;
+using grpc::examples::wallet::stats::Stats;
 
 class StatsServiceImpl final : public Stats::Service {
  public:
@@ -115,32 +119,44 @@ class StatsServiceImpl final : public Stats::Service {
 
   Status FetchPrice(ServerContext* context, const PriceRequest* request,
                     PriceResponse* response) override {
-    if (!ObtainAndValidateUserAndMembership(context)) {
-      return Status(StatusCode::UNAUTHENTICATED,
-                    "membership authentication failed");
+    opencensus::trace::Span span = grpc::GetSpanFromServerContext(context);
+    {
+      // Run in OpenCensus span received from the client to correlate the traces
+      // in Cloud Monitoring.
+      opencensus::trace::WithSpan ws(span);
+      if (!ObtainAndValidateUserAndMembership(context)) {
+        return Status(StatusCode::UNAUTHENTICATED,
+                      "membership authentication failed");
+      }
+      context->AddInitialMetadata("hostname", hostname_);
+      response->set_price(sin(time(0) * 1000 / 173) * 1000 + 10000);
+      return Status::OK;
     }
-    context->AddInitialMetadata("hostname", hostname_);
-    response->set_price(sin(time(0) * 1000 / 173) * 1000 + 10000);
-    return Status::OK;
   }
 
   Status WatchPrice(ServerContext* context, const PriceRequest* request,
                     ServerWriter<PriceResponse>* writer) override {
-    if (!ObtainAndValidateUserAndMembership(context)) {
-      return Status(StatusCode::UNAUTHENTICATED,
-                    "membership authtication failed");
-    }
-    context->AddInitialMetadata("hostname", hostname_);
-    while (true) {
-      PriceResponse response;
-      response.set_price(sin(time(0) * 1000 / 173) * 1000 + 10000);
-      if (!writer->Write(response)) {
-        break;
+    opencensus::trace::Span span = grpc::GetSpanFromServerContext(context);
+    {
+      // Run in OpenCensus span received from the client to correlate the traces
+      // in Cloud Monitoring.
+      opencensus::trace::WithSpan ws(span);
+      if (!ObtainAndValidateUserAndMembership(context)) {
+        return Status(StatusCode::UNAUTHENTICATED,
+                      "membership authtication failed");
       }
-      std::this_thread::sleep_for(
-          std::chrono::milliseconds(membership_ == "premium" ? 100 : 1000));
+      context->AddInitialMetadata("hostname", hostname_);
+      while (true) {
+        PriceResponse response;
+        response.set_price(sin(time(0) * 1000 / 173) * 1000 + 10000);
+        if (!writer->Write(response)) {
+          break;
+        }
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(membership_ == "premium" ? 100 : 1000));
+      }
+      return Status::OK;
     }
-    return Status::OK;
   }
 
   std::string hostname_;
@@ -186,14 +202,16 @@ void RunServer(const std::string& port, const std::string& account_server,
 }
 
 int main(int argc, char** argv) {
-  std::string port = "50052";
-  std::string account_server = "localhost:50053";
+  std::string port = "18882";
+  std::string account_server = "localhost:18883";
   std::string hostname_suffix = "";
   bool premium_only = false;
+  std::string observability_project = "";
   std::string arg_str_port("--port");
   std::string arg_str_account_server("--account_server");
   std::string arg_str_hostname_suffix("--hostname_suffix");
   std::string arg_str_premium_only("--premium_only");
+  std::string arg_str_observability_project("--observability_project");
   for (int i = 1; i < argc; ++i) {
     std::string arg_val = argv[i];
     size_t start_pos = arg_val.find(arg_str_port);
@@ -253,11 +271,42 @@ int main(int argc, char** argv) {
         return 1;
       }
     }
+    start_pos = arg_val.find(arg_str_observability_project);
+    if (start_pos != std::string::npos) {
+      start_pos += arg_str_observability_project.size();
+      if (arg_val[start_pos] == '=') {
+        observability_project = arg_val.substr(start_pos + 1);
+        continue;
+      } else {
+        std::cout
+            << "The only correct argument syntax is --observability_project="
+            << std::endl;
+        return 1;
+      }
+    }
   }
   std::cout << "Stats Server arguments: port: " << port
             << ", account_server: " << account_server
             << ", hostname_suffix: " << hostname_suffix
-            << ", premium_only: " << premium_only << std::endl;
+            << ", premium_only: " << premium_only
+            << ", observability_project: " << observability_project
+            << std::endl;
+  if (!observability_project.empty()) {
+    grpc::RegisterOpenCensusPlugin();
+    grpc::RegisterOpenCensusViewsForExport();
+    opencensus::trace::TraceConfig::SetCurrentTraceParams(
+        {128, 128, 128, 128, opencensus::trace::ProbabilitySampler(1.0)});
+    opencensus::exporters::trace::StackdriverOptions trace_opts;
+    trace_opts.project_id = observability_project;
+    opencensus::exporters::trace::StackdriverExporter::Register(
+        std::move(trace_opts));
+    opencensus::exporters::stats::StackdriverOptions stats_opts;
+    stats_opts.project_id = observability_project;
+    // This must be unique among all processes exporting to Stackdriver
+    stats_opts.opencensus_task = "stats-server-" + std::to_string(getpid());
+    opencensus::exporters::stats::StackdriverExporter::Register(
+        std::move(stats_opts));
+  }
   RunServer(port, account_server, hostname_suffix, premium_only);
   return 0;
 }

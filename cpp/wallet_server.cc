@@ -16,23 +16,23 @@
  *
  */
 
+#include <grpcpp/ext/proto_server_reflection_plugin.h>
+#include <grpcpp/grpcpp.h>
+#include <grpcpp/health_check_service_interface.h>
+#include <grpcpp/opencensus.h>
 #include <unistd.h>
+
 #include <iostream>
 #include <memory>
 #include <string>
 
-#include <grpcpp/ext/proto_server_reflection_plugin.h>
-#include <grpcpp/grpcpp.h>
-#include <grpcpp/health_check_service_interface.h>
-
+#include "opencensus/exporters/stats/stackdriver/stackdriver_exporter.h"
+#include "opencensus/exporters/trace/stackdriver/stackdriver_exporter.h"
+#include "opencensus/trace/with_span.h"
 #include "proto/grpc/examples/wallet/account/account.grpc.pb.h"
 #include "proto/grpc/examples/wallet/stats/stats.grpc.pb.h"
 #include "proto/grpc/examples/wallet/wallet.grpc.pb.h"
 
-using grpc::examples::wallet::account::Account;
-using grpc::examples::wallet::account::GetUserInfoRequest;
-using grpc::examples::wallet::account::GetUserInfoResponse;
-using grpc::examples::wallet::account::MembershipType;
 using grpc::Channel;
 using grpc::ChannelArguments;
 using grpc::ClientContext;
@@ -43,12 +43,16 @@ using grpc::ServerContext;
 using grpc::ServerWriter;
 using grpc::Status;
 using grpc::StatusCode;
-using grpc::examples::wallet::stats::PriceRequest;
-using grpc::examples::wallet::stats::PriceResponse;
-using grpc::examples::wallet::stats::Stats;
 using grpc::examples::wallet::BalanceRequest;
 using grpc::examples::wallet::BalanceResponse;
 using grpc::examples::wallet::Wallet;
+using grpc::examples::wallet::account::Account;
+using grpc::examples::wallet::account::GetUserInfoRequest;
+using grpc::examples::wallet::account::GetUserInfoResponse;
+using grpc::examples::wallet::account::MembershipType;
+using grpc::examples::wallet::stats::PriceRequest;
+using grpc::examples::wallet::stats::PriceResponse;
+using grpc::examples::wallet::stats::Stats;
 
 class WalletServiceImpl final : public Wallet::Service {
  public:
@@ -129,62 +133,26 @@ class WalletServiceImpl final : public Wallet::Service {
 
   Status FetchBalance(ServerContext* context, const BalanceRequest* request,
                       BalanceResponse* response) override {
-    if (!ObtainAndValidateUserAndMembership(context)) {
-      return Status(StatusCode::UNAUTHENTICATED,
-                    "membership authentication failed");
-    }
-    context->AddInitialMetadata("hostname", hostname_);
-    ClientContext stats_context;
-    stats_context.set_wait_for_ready(true);
-    stats_context.AddMetadata("authorization", token_);
-    stats_context.AddMetadata("membership", membership_);
-    PriceRequest stats_request;
-    PriceResponse stats_response;
-    // Call Stats Server to fetch the price to calculate the balance.
-    Status stats_status =
-        stats_stub_->FetchPrice(&stats_context, stats_request, &stats_response);
-    if (stats_status.ok()) {
-      auto metadata_hostname =
-          stats_context.GetServerInitialMetadata().find("hostname");
-      if (metadata_hostname != stats_context.GetServerInitialMetadata().end()) {
-        std::cout << "server host: "
-                  << std::string(metadata_hostname->second.data(),
-                                 metadata_hostname->second.length())
-                  << std::endl;
+    opencensus::trace::Span span = grpc::GetSpanFromServerContext(context);
+    {
+      // Run in OpenCensus span received from the client to correlate the traces
+      // in Cloud Monitoring.
+      opencensus::trace::WithSpan ws(span);
+      if (!ObtainAndValidateUserAndMembership(context)) {
+        return Status(StatusCode::UNAUTHENTICATED,
+                      "membership authentication failed");
       }
-      std::cout << "grpc-coin price " << stats_response.price() << std::endl;
-    } else {
-      std::cout << stats_status.error_code() << ": "
-                << stats_status.error_message() << std::endl;
-    }
-    int total_balance = ObtainAndBuildPerAddressResponse(stats_response.price(),
-                                                         request, response);
-    response->set_balance(total_balance);
-    return Status::OK;
-  }
-
-  Status WatchBalance(ServerContext* context, const BalanceRequest* request,
-                      ServerWriter<BalanceResponse>* writer) override {
-    if (!ObtainAndValidateUserAndMembership(context)) {
-      return Status(StatusCode::UNAUTHENTICATED,
-                    "membership authentication failed");
-    }
-    context->AddInitialMetadata("hostname", hostname_);
-    ClientContext stats_context;
-    stats_context.set_wait_for_ready(true);
-    stats_context.AddMetadata("authorization", token_);
-    stats_context.AddMetadata("membership", membership_);
-    PriceRequest stats_request;
-    PriceResponse stats_response;
-    // Open a streaming price watching with Stats Server.
-    // Every time a response
-    // is received, use the price to calculate the balance.
-    // Send every updated balance in a stream back to the client.
-    std::unique_ptr<ClientReader<PriceResponse>> stats_reader(
-        stats_stub_->WatchPrice(&stats_context, stats_request));
-    bool first_read = true;
-    while (stats_reader->Read(&stats_response)) {
-      if (first_read) {
+      context->AddInitialMetadata("hostname", hostname_);
+      ClientContext stats_context;
+      stats_context.set_wait_for_ready(true);
+      stats_context.AddMetadata("authorization", token_);
+      stats_context.AddMetadata("membership", membership_);
+      PriceRequest stats_request;
+      PriceResponse stats_response;
+      // Call Stats Server to fetch the price to calculate the balance.
+      Status stats_status = stats_stub_->FetchPrice(
+          &stats_context, stats_request, &stats_response);
+      if (stats_status.ok()) {
         auto metadata_hostname =
             stats_context.GetServerInitialMetadata().find("hostname");
         if (metadata_hostname !=
@@ -194,18 +162,67 @@ class WalletServiceImpl final : public Wallet::Service {
                                    metadata_hostname->second.length())
                     << std::endl;
         }
-        first_read = false;
+        std::cout << "grpc-coin price " << stats_response.price() << std::endl;
+      } else {
+        std::cout << stats_status.error_code() << ": "
+                  << stats_status.error_message() << std::endl;
       }
-      std::cout << "grpc-coin price: " << stats_response.price() << std::endl;
-      BalanceResponse response;
       int total_balance = ObtainAndBuildPerAddressResponse(
-          stats_response.price(), request, &response);
-      response.set_balance(total_balance);
-      if (!writer->Write(response)) {
-        break;
-      }
+          stats_response.price(), request, response);
+      response->set_balance(total_balance);
+      return Status::OK;
     }
-    return Status::OK;
+  }
+
+  Status WatchBalance(ServerContext* context, const BalanceRequest* request,
+                      ServerWriter<BalanceResponse>* writer) override {
+    opencensus::trace::Span span = grpc::GetSpanFromServerContext(context);
+    {
+      // Run in OpenCensus span received from the client to correlate the traces
+      // in Cloud Monitoring.
+      opencensus::trace::WithSpan ws(span);
+      if (!ObtainAndValidateUserAndMembership(context)) {
+        return Status(StatusCode::UNAUTHENTICATED,
+                      "membership authentication failed");
+      }
+      context->AddInitialMetadata("hostname", hostname_);
+      ClientContext stats_context;
+      stats_context.set_wait_for_ready(true);
+      stats_context.AddMetadata("authorization", token_);
+      stats_context.AddMetadata("membership", membership_);
+      PriceRequest stats_request;
+      PriceResponse stats_response;
+      // Open a streaming price watching with Stats Server.
+      // Every time a response
+      // is received, use the price to calculate the balance.
+      // Send every updated balance in a stream back to the client.
+      std::unique_ptr<ClientReader<PriceResponse>> stats_reader(
+          stats_stub_->WatchPrice(&stats_context, stats_request));
+      bool first_read = true;
+      while (stats_reader->Read(&stats_response)) {
+        if (first_read) {
+          auto metadata_hostname =
+              stats_context.GetServerInitialMetadata().find("hostname");
+          if (metadata_hostname !=
+              stats_context.GetServerInitialMetadata().end()) {
+            std::cout << "server host: "
+                      << std::string(metadata_hostname->second.data(),
+                                     metadata_hostname->second.length())
+                      << std::endl;
+          }
+          first_read = false;
+        }
+        std::cout << "grpc-coin price: " << stats_response.price() << std::endl;
+        BalanceResponse response;
+        int total_balance = ObtainAndBuildPerAddressResponse(
+            stats_response.price(), request, &response);
+        response.set_balance(total_balance);
+        if (!writer->Write(response)) {
+          break;
+        }
+      }
+      return Status::OK;
+    }
   }
 
   std::string hostname_;
@@ -258,16 +275,18 @@ void RunServer(const std::string& port, const std::string& account_server,
 }
 
 int main(int argc, char** argv) {
-  std::string port = "50051";
-  std::string account_server = "localhost:50053";
-  std::string stats_server = "localhost:50052";
+  std::string port = "18881";
+  std::string account_server = "localhost:18882";
+  std::string stats_server = "localhost:18883";
   std::string hostname_suffix = "";
   bool v1_behavior = false;
+  std::string observability_project = "";
   std::string arg_str_port("--port");
   std::string arg_str_account_server("--account_server");
   std::string arg_str_stats_server("--stats_server");
   std::string arg_str_hostname_suffix("--hostname_suffix");
   std::string arg_str_v1_behavior("--v1_behavior");
+  std::string arg_str_observability_project("--observability_project");
   for (int i = 1; i < argc; ++i) {
     std::string arg_val = argv[i];
     size_t start_pos = arg_val.find(arg_str_port);
@@ -339,12 +358,43 @@ int main(int argc, char** argv) {
         return 1;
       }
     }
+    start_pos = arg_val.find(arg_str_observability_project);
+    if (start_pos != std::string::npos) {
+      start_pos += arg_str_observability_project.size();
+      if (arg_val[start_pos] == '=') {
+        observability_project = arg_val.substr(start_pos + 1);
+        continue;
+      } else {
+        std::cout
+            << "The only correct argument syntax is --observability_project="
+            << std::endl;
+        return 1;
+      }
+    }
   }
   std::cout << "Wallet Server arguments: port: " << port
             << ", account_server: " << account_server
             << ", stats_server: " << stats_server
             << ", hostname_suffix: " << hostname_suffix
-            << ", v1_behavior: " << v1_behavior << std::endl;
+            << ", v1_behavior: " << v1_behavior
+            << ", observability_project: " << observability_project
+            << std::endl;
+  if (!observability_project.empty()) {
+    grpc::RegisterOpenCensusPlugin();
+    grpc::RegisterOpenCensusViewsForExport();
+    opencensus::trace::TraceConfig::SetCurrentTraceParams(
+        {128, 128, 128, 128, opencensus::trace::ProbabilitySampler(1.0)});
+    opencensus::exporters::trace::StackdriverOptions trace_opts;
+    trace_opts.project_id = observability_project;
+    opencensus::exporters::trace::StackdriverExporter::Register(
+        std::move(trace_opts));
+    opencensus::exporters::stats::StackdriverOptions stats_opts;
+    stats_opts.project_id = observability_project;
+    // This must be unique among all processes exporting to Stackdriver
+    stats_opts.opencensus_task = "wallet-server-" + std::to_string(getpid());
+    opencensus::exporters::stats::StackdriverExporter::Register(
+        std::move(stats_opts));
+  }
   RunServer(port, account_server, stats_server, hostname_suffix, v1_behavior);
   return 0;
 }

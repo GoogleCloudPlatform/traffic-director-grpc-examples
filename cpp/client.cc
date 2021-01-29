@@ -16,13 +16,17 @@
  *
  */
 
+#include <grpc++/grpc++.h>
+#include <grpcpp/opencensus.h>
+#include <unistd.h>
+
 #include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
 
-#include <grpc++/grpc++.h>
-
+#include "opencensus/exporters/stats/stackdriver/stackdriver_exporter.h"
+#include "opencensus/exporters/trace/stackdriver/stackdriver_exporter.h"
 #include "proto/grpc/examples/wallet/stats/stats.grpc.pb.h"
 #include "proto/grpc/examples/wallet/wallet.grpc.pb.h"
 
@@ -31,12 +35,12 @@ using grpc::ChannelArguments;
 using grpc::ClientContext;
 using grpc::ClientReader;
 using grpc::Status;
-using grpc::examples::wallet::stats::PriceRequest;
-using grpc::examples::wallet::stats::PriceResponse;
-using grpc::examples::wallet::stats::Stats;
 using grpc::examples::wallet::BalanceRequest;
 using grpc::examples::wallet::BalanceResponse;
 using grpc::examples::wallet::Wallet;
+using grpc::examples::wallet::stats::PriceRequest;
+using grpc::examples::wallet::stats::PriceResponse;
+using grpc::examples::wallet::stats::Stats;
 
 class WalletClient {
  public:
@@ -206,11 +210,12 @@ class StatsClient {
 
 int main(int argc, char** argv) {
   std::string command = "balance";
-  std::string wallet_server = "localhost:50051";
-  std::string stats_server = "localhost:50052";
+  std::string wallet_server = "localhost:18881";
+  std::string stats_server = "localhost:18882";
   std::string user = "Alice";
   bool watch = false;
   bool unary_watch = false;
+  std::string observability_project = "";
   std::string arg_command_balance("balance");
   std::string arg_command_price("price");
   std::string arg_str_wallet_server("--wallet_server");
@@ -218,6 +223,7 @@ int main(int argc, char** argv) {
   std::string arg_str_user("--user");
   std::string arg_str_watch("--watch");
   std::string arg_str_unary_watch("--unary_watch");
+  std::string arg_str_observability_project("--observability_project");
   for (int i = 1; i < argc; ++i) {
     std::string arg_val = argv[i];
     size_t start_pos = arg_val.find(arg_command_balance);
@@ -320,12 +326,45 @@ int main(int argc, char** argv) {
         return 1;
       }
     }
+
+    start_pos = arg_val.find(arg_str_observability_project);
+    if (start_pos != std::string::npos) {
+      start_pos += arg_str_observability_project.size();
+      if (arg_val[start_pos] == '=') {
+        observability_project = arg_val.substr(start_pos + 1);
+        continue;
+      } else {
+        std::cout
+            << "The only correct argument syntax is --observability_project="
+            << std::endl;
+        return 1;
+      }
+    }
   }
   std::cout << "Client arguments: command: " << command
             << ", wallet_server: " << wallet_server
             << ", stats_server: " << stats_server << ", user: " << user
             << ", watch: " << watch << " ,unary_watch: " << unary_watch
+            << ", observability_project: " << observability_project
             << std::endl;
+
+  if (!observability_project.empty()) {
+    grpc::RegisterOpenCensusPlugin();
+    grpc::RegisterOpenCensusViewsForExport();
+    opencensus::trace::TraceConfig::SetCurrentTraceParams(
+        {128, 128, 128, 128, opencensus::trace::ProbabilitySampler(1.0)});
+    opencensus::exporters::trace::StackdriverOptions trace_opts;
+    trace_opts.project_id = observability_project;
+    opencensus::exporters::trace::StackdriverExporter::Register(
+        std::move(trace_opts));
+    opencensus::exporters::stats::StackdriverOptions stats_opts;
+    stats_opts.project_id = observability_project;
+    // This must be unique among all processes exporting to Stackdriver
+    stats_opts.opencensus_task = "client-" + std::to_string(getpid());
+    opencensus::exporters::stats::StackdriverExporter::Register(
+        std::move(stats_opts));
+  }
+
   // Instantiate the client.  It requires a channel, out of which the actual
   // RPCs are created.  The channel models a connection to an endpoint (Stats
   // Server or Wallet Server in this case).  We indicate that the channel isn't
