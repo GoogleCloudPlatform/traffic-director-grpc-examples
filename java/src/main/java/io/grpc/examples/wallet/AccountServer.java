@@ -41,6 +41,7 @@ public class AccountServer {
 
   private int port = 18883;
   private String hostnameSuffix = "";
+  private String observabilityProject = "";
 
   void parseArgs(String[] args) {
     boolean usage = false;
@@ -66,6 +67,8 @@ public class AccountServer {
         port = Integer.parseInt(value);
       } else if ("hostname_suffix".equals(key)) {
         hostnameSuffix = value;
+      } else if ("observability_project".equals(key)) {
+        observabilityProject = value;
       } else {
         System.err.println("Unknown argument: " + key);
         usage = true;
@@ -82,12 +85,17 @@ public class AccountServer {
               + "\n  --hostname_suffix=STR  Suffix to append to hostname in response header. "
               + "Default \""
               + s.hostnameSuffix
-              + "\"");
+              + "\""
+              + "\n  --observability_project=STR GCP project. If set, metrics and traces will be "
+              + "sent to Stackdriver. Default \"" + s.observabilityProject + "\"");
       System.exit(1);
     }
   }
 
   private void start() throws IOException {
+    if (!observabilityProject.isEmpty()) {
+      Observability.registerExporters(observabilityProject);
+    }
     HealthStatusManager health = new HealthStatusManager();
     server =
         ServerBuilder.forPort(port)
