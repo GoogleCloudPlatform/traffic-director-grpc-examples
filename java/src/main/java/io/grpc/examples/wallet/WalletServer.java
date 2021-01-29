@@ -123,7 +123,7 @@ public class WalletServer {
   }
 
   private void start() throws IOException {
-    if (observabilityProject != "") {
+    if (!observabilityProject.isEmpty()) {
       Observability.registerExporters(observabilityProject);
     }
     accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();

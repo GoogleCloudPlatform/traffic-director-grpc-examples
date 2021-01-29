@@ -93,7 +93,7 @@ public class AccountServer {
   }
 
   private void start() throws IOException {
-    if (observabilityProject != "") {
+    if (!observabilityProject.isEmpty()) {
       Observability.registerExporters(observabilityProject);
     }
     HealthStatusManager health = new HealthStatusManager();

@@ -57,7 +57,7 @@ public class Client {
   public void run() throws InterruptedException, ExecutionException {
     logger.info("Will try to run " + command);
 
-    if (observabilityProject != "") {
+    if (!observabilityProject.isEmpty()) {
       Observability.registerExporters(observabilityProject);
     }
 
