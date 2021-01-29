@@ -28,6 +28,7 @@
 
 #include "opencensus/exporters/stats/stackdriver/stackdriver_exporter.h"
 #include "opencensus/exporters/trace/stackdriver/stackdriver_exporter.h"
+#include "opencensus/trace/with_span.h"
 #include "proto/grpc/examples/wallet/account/account.grpc.pb.h"
 
 using grpc::Server;
@@ -48,18 +49,24 @@ class AccountServiceImpl final : public Account::Service {
  private:
   Status GetUserInfo(ServerContext* context, const GetUserInfoRequest* request,
                      GetUserInfoResponse* response) override {
-    std::string token = request->token();
-    context->AddInitialMetadata("hostname", hostname_);
-    if (token == "2bd806c9") {
-      response->set_name("Alice");
-      response->set_membership(MembershipType::PREMIUM);
-    } else if (token == "81b637d8") {
-      response->set_name("Bob");
-      response->set_membership(MembershipType::NORMAL);
-    } else {
-      return Status(StatusCode::NOT_FOUND, "user not found");
+    opencensus::trace::Span span = grpc::GetSpanFromServerContext(context);
+    {
+      // Run in OpenCensus span received from the client to correlate the traces
+      // in Cloud Monitoring.
+      opencensus::trace::WithSpan ws(span);
+      std::string token = request->token();
+      context->AddInitialMetadata("hostname", hostname_);
+      if (token == "2bd806c9") {
+        response->set_name("Alice");
+        response->set_membership(MembershipType::PREMIUM);
+      } else if (token == "81b637d8") {
+        response->set_name("Bob");
+        response->set_membership(MembershipType::NORMAL);
+      } else {
+        return Status(StatusCode::NOT_FOUND, "user not found");
+      }
+      return Status::OK;
     }
-    return Status::OK;
   }
 
   std::string hostname_;
@@ -93,7 +100,7 @@ void RunServer(const std::string& port, const std::string& hostname_suffix) {
 }
 
 int main(int argc, char** argv) {
-  std::string port = "50053";
+  std::string port = "18883";
   std::string hostname_suffix = "";
   std::string observability_project = "";
   std::string arg_str_port("--port");
