@@ -302,6 +302,8 @@ int main(int argc, char** argv) {
         std::move(trace_opts));
     opencensus::exporters::stats::StackdriverOptions stats_opts;
     stats_opts.project_id = observability_project;
+    // This must be unique among all processes exporting to Stackdriver
+    stats_opts.opencensus_task = "stats-server-" + std::to_string(getpid());
     opencensus::exporters::stats::StackdriverExporter::Register(
         std::move(stats_opts));
   }
