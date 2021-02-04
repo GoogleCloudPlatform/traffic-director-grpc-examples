@@ -9,7 +9,7 @@ import (
 	"go.opencensus.io/trace"
 )
 
-func ConfigureStackdriver(gcpProject string) {
+func ConfigureStackdriver(gcpProject string) *stackdriver.Exporter {
 	if err := view.Register(ocgrpc.DefaultClientViews...); err != nil {
 		log.Fatalf("Failed to register ocgrpc client views: %v", err)
 	}
@@ -26,4 +26,5 @@ func ConfigureStackdriver(gcpProject string) {
 	defer sd.StopMetricsExporter()
 	// For demo purposes, always sample
 	trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
+	return sd
 }

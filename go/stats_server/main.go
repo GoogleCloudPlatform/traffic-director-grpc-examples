@@ -137,7 +137,9 @@ func main() {
 	var dialOpts = []grpc.DialOption{grpc.WithInsecure()}
 	var serverOpts []grpc.ServerOption
 	if args.observabilityProject != "" {
-		observability.ConfigureStackdriver(args.observabilityProject)
+		sd := observability.ConfigureStackdriver(args.observabilityProject)
+		defer sd.Flush()
+		defer sd.StopMetricsExporter()
 		dialOpts = append(dialOpts, grpc.WithStatsHandler(new(ocgrpc.ClientHandler)))
 		serverOpts = append(serverOpts, grpc.StatsHandler(&ocgrpc.ServerHandler{}))
 	}

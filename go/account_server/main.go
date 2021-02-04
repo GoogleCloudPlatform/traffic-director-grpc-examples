@@ -91,7 +91,9 @@ func main() {
 
 	var serverOpts []grpc.ServerOption
 	if args.observabilityProject != "" {
-		observability.ConfigureStackdriver(args.observabilityProject)
+		sd := observability.ConfigureStackdriver(args.observabilityProject)
+		defer sd.Flush()
+		defer sd.StopMetricsExporter()
 		serverOpts = append(serverOpts, grpc.StatsHandler(&ocgrpc.ServerHandler{}))
 	}
 

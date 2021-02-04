@@ -232,7 +232,9 @@ func main() {
 	parseArguments()
 
 	if args.observabilityProject != "" {
-		observability.ConfigureStackdriver(args.observabilityProject)
+		sd := observability.ConfigureStackdriver(args.observabilityProject)
+		defer sd.Flush()
+		defer sd.StopMetricsExporter()
 	}
 
 	if args.subcommand == "balance" {
