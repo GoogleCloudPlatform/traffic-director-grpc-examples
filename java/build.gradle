@@ -14,8 +14,8 @@ repositories {
     mavenLocal()
 }
 
-sourceCompatibility = 1.7
-targetCompatibility = 1.7
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 def grpcVersion = '1.35.0' // CURRENT_GRPC_VERSION
 def opencensusVersion = '0.28.0'
@@ -36,6 +36,7 @@ dependencies {
     runtimeOnly "io.grpc:grpc-xds:${grpcVersion}"
     runtime "io.opencensus:opencensus-impl:${opencensusVersion}"
 
+    testImplementation "com.google.truth:truth:1.1.2"
     testImplementation "io.grpc:grpc-testing:${grpcVersion}"
     testImplementation "junit:junit:4.12"
     testImplementation "org.mockito:mockito-core:2.28.2"
