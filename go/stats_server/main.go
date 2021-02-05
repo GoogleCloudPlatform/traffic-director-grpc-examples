@@ -26,10 +26,12 @@ import (
 	"net"
 	"time"
 
+	"go.opencensus.io/plugin/ocgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	accountpb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/account"
 	statspb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/stats"
+	"google.golang.org/grpc/grpc-wallet/observability"
 	"google.golang.org/grpc/grpc-wallet/utility"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -41,10 +43,11 @@ import (
 )
 
 type arguments struct {
-	port           string
-	accountServer  string
-	hostnameSuffix string
-	premiumOnly    bool
+	port                 string
+	accountServer        string
+	hostnameSuffix       string
+	premiumOnly          bool
+	observabilityProject string
 }
 
 // parseArguments parses the command line arguments using the flag package.
@@ -54,6 +57,7 @@ func parseArguments() arguments {
 	flag.StringVar(&result.accountServer, "account_server", "localhost:18883", "address of the account service, default 'localhost:18883'")
 	flag.StringVar(&result.hostnameSuffix, "hostname_suffix", "", "suffix to append to hostname in response header for outgoing RPCs, default ''")
 	flag.BoolVar(&result.premiumOnly, "premium_only", false, "whether this service is for users with premium access only, default false")
+	flag.StringVar(&result.observabilityProject, "observability_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
 	flag.Parse()
 	return result
 }
@@ -130,8 +134,18 @@ func (s *server) WatchPrice(req *statspb.PriceRequest, srv statspb.Stats_WatchPr
 func main() {
 	args := parseArguments()
 
+	var dialOpts = []grpc.DialOption{grpc.WithInsecure()}
+	var serverOpts []grpc.ServerOption
+	if args.observabilityProject != "" {
+		sd := observability.ConfigureStackdriver(args.observabilityProject)
+		defer sd.Flush()
+		defer sd.StopMetricsExporter()
+		dialOpts = append(dialOpts, grpc.WithStatsHandler(new(ocgrpc.ClientHandler)))
+		serverOpts = append(serverOpts, grpc.StatsHandler(&ocgrpc.ServerHandler{}))
+	}
+
 	// Dial account server.
-	conn, err := grpc.Dial(args.accountServer, grpc.WithInsecure())
+	conn, err := grpc.Dial(args.accountServer, dialOpts...)
 	if err != nil {
 		log.Fatalf("did not connect: %v.", err)
 	}
@@ -143,7 +157,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer()
+	s := grpc.NewServer(serverOpts...)
 	statspb.RegisterStatsServer(s, &server{
 		args:          &args,
 		hostname:      utility.GenHostname(args.hostnameSuffix),

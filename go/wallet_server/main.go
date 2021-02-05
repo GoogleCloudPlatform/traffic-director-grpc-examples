@@ -26,11 +26,13 @@ import (
 	"log"
 	"net"
 
+	"go.opencensus.io/plugin/ocgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	walletpb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet"
 	accountpb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/account"
 	statspb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/stats"
+	"google.golang.org/grpc/grpc-wallet/observability"
 	"google.golang.org/grpc/grpc-wallet/utility"
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -53,11 +55,12 @@ var users = map[string]map[string]int{
 }
 
 type arguments struct {
-	port           string
-	accountServer  string
-	statsServer    string
-	hostnameSuffix string
-	v1Behavior     bool
+	port                 string
+	accountServer        string
+	statsServer          string
+	hostnameSuffix       string
+	v1Behavior           bool
+	observabilityProject string
 }
 
 // parseArguments parses the command line arguments using the flag package.
@@ -68,6 +71,7 @@ func parseArguments() arguments {
 	flag.StringVar(&result.statsServer, "stats_server", "localhost:18882", "address of the stats service, default 'localhost:18882'")
 	flag.StringVar(&result.hostnameSuffix, "hostname_suffix", "", "suffix to append to hostname in response header for outgoing RPCs, default ''")
 	flag.BoolVar(&result.v1Behavior, "v1_behavior", false, "usage")
+	flag.StringVar(&result.observabilityProject, "observability_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
 	flag.Parse()
 	return result
 }
@@ -116,7 +120,7 @@ func (s *server) FetchBalance(ctx context.Context, req *walletpb.BalanceRequest)
 
 	// Get the price.
 	md := metadata.Pairs("authorization", token, "membership", membership)
-	statsCtx := metadata.NewOutgoingContext(context.Background(), md)
+	statsCtx := metadata.NewOutgoingContext(ctx, md)
 	var header metadata.MD
 	r, err := s.statsClient.FetchPrice(statsCtx, &statspb.PriceRequest{}, grpc.Header(&header))
 	utility.PrintHostname(header)
@@ -141,7 +145,7 @@ func (s *server) WatchBalance(req *walletpb.BalanceRequest, srv walletpb.Wallet_
 
 	// Connect to the stats client.
 	md := metadata.Pairs("authorization", token, "membership", membership)
-	statsCtx := metadata.NewOutgoingContext(context.Background(), md)
+	statsCtx := metadata.NewOutgoingContext(srv.Context(), md)
 	statsSrv, err := s.statsClient.WatchPrice(statsCtx, &statspb.PriceRequest{})
 	header, err := statsSrv.Header()
 	if err != nil {
@@ -175,8 +179,18 @@ func (s *server) WatchBalance(req *walletpb.BalanceRequest, srv walletpb.Wallet_
 func main() {
 	args := parseArguments()
 
+	var dialOpts = []grpc.DialOption{grpc.WithInsecure()}
+	var serverOpts []grpc.ServerOption
+	if args.observabilityProject != "" {
+		sd := observability.ConfigureStackdriver(args.observabilityProject)
+		defer sd.Flush()
+		defer sd.StopMetricsExporter()
+		dialOpts = append(dialOpts, grpc.WithStatsHandler(new(ocgrpc.ClientHandler)))
+		serverOpts = append(serverOpts, grpc.StatsHandler(&ocgrpc.ServerHandler{}))
+	}
+
 	// Dial account server.
-	accountConn, err := grpc.Dial(args.accountServer, grpc.WithInsecure())
+	accountConn, err := grpc.Dial(args.accountServer, dialOpts...)
 	if err != nil {
 		log.Fatalf("did not connect: %v.", err)
 	}
@@ -184,7 +198,7 @@ func main() {
 	accountClient := accountpb.NewAccountClient(accountConn)
 
 	// Dial stats server.
-	statsConn, err := grpc.Dial(args.statsServer, grpc.WithInsecure())
+	statsConn, err := grpc.Dial(args.statsServer, dialOpts...)
 	if err != nil {
 		log.Fatalf("did not connect: %v.", err)
 	}
@@ -196,7 +210,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer()
+	s := grpc.NewServer(serverOpts...)
 	walletpb.RegisterWalletServer(s, &server{
 		args:          &args,
 		hostname:      utility.GenHostname(args.hostnameSuffix),
