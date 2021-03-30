@@ -21,7 +21,6 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -147,9 +146,12 @@ func (s *server) WatchBalance(req *walletpb.BalanceRequest, srv walletpb.Wallet_
 	md := metadata.Pairs("authorization", token, "membership", membership)
 	statsCtx := metadata.NewOutgoingContext(srv.Context(), md)
 	statsSrv, err := s.statsClient.WatchPrice(statsCtx, &statspb.PriceRequest{})
+	if err != nil {
+		return status.Errorf(codes.Unavailable, "error establishing stats.WatchPrice stream: %v", err)
+	}
 	header, err := statsSrv.Header()
 	if err != nil {
-		return fmt.Errorf("could not extract header: %v", err)
+		return status.Errorf(codes.Internal, "could not extract header: %v", err)
 	}
 	utility.PrintHostname(header)
 

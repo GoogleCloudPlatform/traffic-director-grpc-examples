@@ -104,8 +104,13 @@ public class Client {
           }
         } else if (unaryWatch) {
           while (true) {
-            BalanceResponse response = blockingStub.fetchBalance(request);
-            printBalanceResponse(response);
+            try {
+              BalanceResponse response = blockingStub.fetchBalance(request);
+              printBalanceResponse(response);
+            } catch (StatusRuntimeException e) {
+              // Log RPC errors, but keep attempting the unary watch.
+              logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
+            }
             Thread.sleep(1000);
           }
         } else {
