@@ -47,12 +47,11 @@ class WalletClient {
   WalletClient(std::shared_ptr<Channel> channel)
       : stub_(Wallet::NewStub(channel)) {}
 
-  void FetchBalance(const std::string& user) {
+  void FetchBalance(const std::string& user, const std::string& route) {
     BalanceRequest request;
     request.set_include_balance_per_address(true);
     BalanceResponse response;
     ClientContext context;
-    // TODO: (@donnadionne) should remove and fix TRANSIENT_FAILURE.
     context.set_wait_for_ready(true);
     if (user == "Alice") {
       context.AddMetadata("authorization", "2bd806c9");
@@ -60,6 +59,9 @@ class WalletClient {
     } else {
       context.AddMetadata("authorization", "81b637d8");
       context.AddMetadata("membership", "normal");
+    }
+    if (route != "") {
+      context.AddMetadata("route", route);
     }
     Status status = stub_->FetchBalance(&context, request, &response);
     if (status.ok()) {
@@ -84,12 +86,11 @@ class WalletClient {
     }
   }
 
-  void WatchBalance(const std::string& user) {
+  void WatchBalance(const std::string& user, const std::string& route) {
     BalanceRequest request;
     request.set_include_balance_per_address(true);
     BalanceResponse response;
     ClientContext context;
-    // TODO: (@donnadionne) should remove and fix TRANSIENT_FAILURE.
     context.set_wait_for_ready(true);
     if (user == "Alice") {
       context.AddMetadata("authorization", "2bd806c9");
@@ -97,6 +98,9 @@ class WalletClient {
     } else {
       context.AddMetadata("authorization", "81b637d8");
       context.AddMetadata("membership", "normal");
+    }
+    if (route != "") {
+      context.AddMetadata("route", route);
     }
     std::unique_ptr<ClientReader<BalanceResponse> > reader(
         stub_->WatchBalance(&context, request));
@@ -137,11 +141,10 @@ class StatsClient {
   StatsClient(std::shared_ptr<Channel> channel)
       : stub_(Stats::NewStub(channel)) {}
 
-  void FetchPrice(const std::string& user) {
+  void FetchPrice(const std::string& user, const std::string& route) {
     PriceRequest request;
     PriceResponse response;
     ClientContext context;
-    // TODO: (@donnadionne) should remove and fix TRANSIENT_FAILURE.
     context.set_wait_for_ready(true);
     if (user == "Alice") {
       context.AddMetadata("authorization", "2bd806c9");
@@ -149,6 +152,9 @@ class StatsClient {
     } else {
       context.AddMetadata("authorization", "81b637d8");
       context.AddMetadata("membership", "normal");
+    }
+    if (route != "") {
+      context.AddMetadata("route", route);
     }
     Status status = stub_->FetchPrice(&context, request, &response);
     if (status.ok()) {
@@ -167,11 +173,10 @@ class StatsClient {
     }
   }
 
-  void WatchPrice(const std::string& user) {
+  void WatchPrice(const std::string& user, const std::string& route) {
     PriceRequest request;
     PriceResponse response;
     ClientContext context;
-    // TODO: (@donnadionne) should remove and fix TRANSIENT_FAILURE.
     context.set_wait_for_ready(true);
     if (user == "Alice") {
       context.AddMetadata("authorization", "2bd806c9");
@@ -179,6 +184,9 @@ class StatsClient {
     } else {
       context.AddMetadata("authorization", "81b637d8");
       context.AddMetadata("membership", "normal");
+    }
+    if (route != "") {
+      context.AddMetadata("route", route);
     }
     std::unique_ptr<ClientReader<PriceResponse> > reader(
         stub_->WatchPrice(&context, request));
@@ -213,6 +221,7 @@ int main(int argc, char** argv) {
   std::string wallet_server = "localhost:18881";
   std::string stats_server = "localhost:18882";
   std::string user = "Alice";
+  std::string route = "";
   bool watch = false;
   bool unary_watch = false;
   std::string observability_project = "";
@@ -224,6 +233,7 @@ int main(int argc, char** argv) {
   std::string arg_str_watch("--watch");
   std::string arg_str_unary_watch("--unary_watch");
   std::string arg_str_observability_project("--observability_project");
+  std::string arg_str_route("--route");
   for (int i = 1; i < argc; ++i) {
     std::string arg_val = argv[i];
     size_t start_pos = arg_val.find(arg_command_balance);
@@ -340,12 +350,26 @@ int main(int argc, char** argv) {
         return 1;
       }
     }
+
+    start_pos = arg_val.find(arg_str_route);
+    if (start_pos != std::string::npos) {
+      start_pos += arg_str_route.size();
+      if (arg_val[start_pos] == '=') {
+        route = arg_val.substr(start_pos + 1);
+        continue;
+      } else {
+        std::cout << "The only correct argument syntax is --route=" << std::endl;
+        return 1;
+      }
+    }
+
   }
   std::cout << "Client arguments: command: " << command
             << ", wallet_server: " << wallet_server
             << ", stats_server: " << stats_server << ", user: " << user
             << ", watch: " << watch << " ,unary_watch: " << unary_watch
             << ", observability_project: " << observability_project
+            << ", route: " << route
             << std::endl;
 
   if (!observability_project.empty()) {
@@ -374,18 +398,18 @@ int main(int argc, char** argv) {
     StatsClient stats(grpc::CreateCustomChannel(
         stats_server, grpc::InsecureChannelCredentials(), args));
     if (watch) {
-      stats.WatchPrice(user);
+      stats.WatchPrice(user, route);
     } else {
-      stats.FetchPrice(user);
+      stats.FetchPrice(user, route);
     }
   } else {
     WalletClient wallet(grpc::CreateCustomChannel(
         wallet_server, grpc::InsecureChannelCredentials(), args));
     if (watch) {
-      wallet.WatchBalance(user);
+      wallet.WatchBalance(user, route);
     } else {
       while (true) {
-        wallet.FetchBalance(user);
+        wallet.FetchBalance(user, route);
         if (!unary_watch) break;
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
       }

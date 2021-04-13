@@ -14,6 +14,11 @@ port="$3"
 hostname_suffix="$4"
 shift 4 # Remaining arguments ($@) are passed to the server binary.
 
+size=2
+if [ "${hostname_suffix}" = "wallet-v2" ]; then
+    size=1
+fi
+
 case "${language}" in
     go)
         build_script="cd \"traffic-director-grpc-examples-master/go/${service_type}_server\"
@@ -53,19 +58,42 @@ gcloud compute instance-templates create grpcwallet-${hostname_suffix}-template 
 
 gcloud compute instance-groups managed create grpcwallet-${hostname_suffix}-mig-us-central1 \
     --zone us-central1-a \
-    --size=2 \
+    --size=${size} \
     --template=grpcwallet-${hostname_suffix}-template
 
 gcloud compute instance-groups set-named-ports grpcwallet-${hostname_suffix}-mig-us-central1 \
     --named-ports=grpcwallet-${service_type}-port:${port} \
     --zone us-central1-a 
 
-gcloud compute backend-services create grpcwallet-${hostname_suffix}-service \
-    --global \
-    --load-balancing-scheme=INTERNAL_SELF_MANAGED \
-    --protocol=GRPC \
-    --port-name=grpcwallet-${service_type}-port \
-    --health-checks grpcwallet-health-check
+project_id="$(gcloud config list --format 'value(core.project)')"
+
+backend_config="affinityCookieTtlSec: 0
+backends:
+- balancingMode: UTILIZATION
+  capacityScaler: 1.0
+  group: https://www.googleapis.com/compute/v1/projects/${project_id}/zones/us-central1-a/instanceGroups/grpcwallet-stats-mig-us-central1
+connectionDraining:
+  drainingTimeoutSec: 0
+description: ''
+healthChecks:
+- https://www.googleapis.com/compute/v1/projects/${project_id}/global/healthChecks/grpcwallet-health-check
+kind: compute#backendService
+loadBalancingScheme: INTERNAL_SELF_MANAGED
+name: grpcwallet-stats-service
+port: 80
+portName: grpcwallet-stats-port
+protocol: GRPC
+selfLink: https://www.googleapis.com/compute/v1/projects/${project_id}/global/backendServices/grpcwallet-stats-service
+sessionAffinity: NONE
+timeoutSec: 30"
+
+if [ "${hostname_suffix}" = "stats" ]; then
+    backend_config="${backend_config}
+circuitBreakers:
+  maxRequests: 1"
+fi
+
+gcloud compute backend-services import grpcwallet-${hostname_suffix}-service --global <<< "${backend_config}"
 
 gcloud compute backend-services add-backend grpcwallet-${hostname_suffix}-service \
     --instance-group grpcwallet-${hostname_suffix}-mig-us-central1 \

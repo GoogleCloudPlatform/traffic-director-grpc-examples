@@ -57,6 +57,7 @@ type arguments struct {
 	watch                bool
 	unaryWatch           bool
 	observabilityProject string
+	route                string
 }
 
 var args arguments
@@ -70,6 +71,7 @@ func parseArguments() {
 	flags.BoolVar(&args.watch, "watch", false, "if the balance/price should be watched rather than queried once, default false")
 	flags.BoolVar(&args.unaryWatch, "unary_watch", false, "if the balance/price should be watched but with repeated unary RPCs rather than a streaming rpc, default false")
 	flags.StringVar(&args.observabilityProject, "observability_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
+	flags.StringVar(&args.route, "route", "", "a string value to set for the 'route' header, unset by default")
 	flags.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
 		fmt.Fprintf(flag.CommandLine.Output(), `
@@ -113,6 +115,9 @@ func createMetaData() (metadata.MD, error) {
 	md, ok := users[args.user]
 	if !ok {
 		return nil, fmt.Errorf("unrecognized user: %v", args.user)
+	}
+	if args.route != "" {
+		md["route"] = args.route
 	}
 	return metadata.New(md), nil
 }
@@ -159,7 +164,7 @@ func balanceSubcommand() {
 		}
 		return
 	}
-	s, err := c.WatchBalance(ctx, &walletpb.BalanceRequest{IncludeBalancePerAddress: true})
+	s, err := c.WatchBalance(ctx, &walletpb.BalanceRequest{IncludeBalancePerAddress: true}, grpc.WaitForReady(true))
 	if err != nil {
 		log.Fatalf("failed to create stream: %v.", err)
 	}
