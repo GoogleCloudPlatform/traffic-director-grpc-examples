@@ -101,7 +101,7 @@ func main() {
 	}
 
 	// Start admin server
-	adminListener, err := net.Listen("tcp", ":"+args.port)
+	adminListener, err := net.Listen("tcp", "localhost:"+args.adminPort)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
