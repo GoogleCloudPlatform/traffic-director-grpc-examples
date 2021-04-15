@@ -16,6 +16,7 @@
  *
  */
 
+#include <grpcpp/ext/admin_services.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
@@ -167,6 +168,15 @@ class StatsServiceImpl final : public Stats::Service {
   std::string membership_ = "premium";
 };
 
+std::unique_ptr<Server> StartAdminServer(const std::string& port) {
+  std::string server_address = "localhost" + port;
+  std::cout << "Admin Server listening on " << server_address << std::endl;
+  ServerBuilder builder;
+  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+  grpc::AddAdminServices(&builder);
+  return builder.BuildAndStart();
+}
+
 void RunServer(const std::string& port, const std::string& account_server,
                const std::string& hostname_suffix, const bool premium_only) {
   char base_hostname[256];
@@ -178,8 +188,6 @@ void RunServer(const std::string& port, const std::string& account_server,
   std::string server_address("0.0.0.0:");
   server_address += port;
   StatsServiceImpl service(hostname, premium_only);
-  grpc::EnableDefaultHealthCheckService(true);
-  grpc::reflection::InitProtoReflectionServerBuilderPlugin();
   // Instantiate the client stub.  It requires a channel, out of which the
   // actual RPCs are created.  The channel models a connection to an endpoint
   // (Account Server in this case).  We indicate that the channel isn't
@@ -203,11 +211,13 @@ void RunServer(const std::string& port, const std::string& account_server,
 
 int main(int argc, char** argv) {
   std::string port = "18882";
+  std::string admin_port = "58882";
   std::string account_server = "localhost:18883";
   std::string hostname_suffix = "";
   bool premium_only = false;
   std::string observability_project = "";
   std::string arg_str_port("--port");
+  std::string arg_str_admin_port("--admin_port");
   std::string arg_str_account_server("--account_server");
   std::string arg_str_hostname_suffix("--hostname_suffix");
   std::string arg_str_premium_only("--premium_only");
@@ -222,6 +232,17 @@ int main(int argc, char** argv) {
         continue;
       } else {
         std::cout << "The only correct argument syntax is --port=" << std::endl;
+        return 1;
+      }
+    }
+    start_pos = arg_val.find(arg_str_admin_port);
+    if (start_pos != std::string::npos) {
+      start_pos += arg_str_admin_port.size();
+      if (arg_val[start_pos] == '=') {
+        admin_port = arg_val.substr(start_pos + 1);
+        continue;
+      } else {
+        std::cout << "The only correct argument syntax is --admin_port=" << std::endl;
         return 1;
       }
     }
@@ -307,6 +328,9 @@ int main(int argc, char** argv) {
     opencensus::exporters::stats::StackdriverExporter::Register(
         std::move(stats_opts));
   }
+  grpc::EnableDefaultHealthCheckService(true);
+  grpc::reflection::InitProtoReflectionServerBuilderPlugin();
+  auto admin_server = StartAdminServer(admin_port);
   RunServer(port, account_server, hostname_suffix, premium_only);
   return 0;
 }

@@ -16,6 +16,7 @@
  *
  */
 
+#include <grpcpp/ext/admin_services.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
@@ -72,6 +73,15 @@ class AccountServiceImpl final : public Account::Service {
   std::string hostname_;
 };
 
+std::unique_ptr<Server> StartAdminServer(const std::string& port) {
+  std::string server_address = "localhost" + port;
+  std::cout << "Admin Server listening on " << server_address << std::endl;
+  ServerBuilder builder;
+  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+  grpc::AddAdminServices(&builder);
+  return builder.BuildAndStart();
+}
+
 void RunServer(const std::string& port, const std::string& hostname_suffix) {
   std::string hostname;
   char base_hostname[256];
@@ -83,8 +93,6 @@ void RunServer(const std::string& port, const std::string& hostname_suffix) {
   std::string server_address("0.0.0.0:");
   server_address += port;
   AccountServiceImpl service(hostname);
-  grpc::EnableDefaultHealthCheckService(true);
-  grpc::reflection::InitProtoReflectionServerBuilderPlugin();
   // Listen on the given address without any authentication mechanism.
   std::cout << "Account Server listening on " << server_address << std::endl;
   ServerBuilder builder;
@@ -101,9 +109,11 @@ void RunServer(const std::string& port, const std::string& hostname_suffix) {
 
 int main(int argc, char** argv) {
   std::string port = "18883";
+  std::string admin_port = "58883";
   std::string hostname_suffix = "";
   std::string observability_project = "";
   std::string arg_str_port("--port");
+  std::string arg_str_admin_port("--admin_port");
   std::string arg_str_hostname_suffix("--hostname_suffix");
   std::string arg_str_observability_project("--observability_project");
   for (int i = 1; i < argc; ++i) {
@@ -116,6 +126,17 @@ int main(int argc, char** argv) {
         continue;
       } else {
         std::cout << "The only correct argument syntax is --port=" << std::endl;
+        return 1;
+      }
+    }
+    start_pos = arg_val.find(arg_str_admin_port);
+    if (start_pos != std::string::npos) {
+      start_pos += arg_str_admin_port.size();
+      if (arg_val[start_pos] == '=') {
+        admin_port = arg_val.substr(start_pos + 1);
+        continue;
+      } else {
+        std::cout << "The only correct argument syntax is --admin_port=" << std::endl;
         return 1;
       }
     }
@@ -165,6 +186,9 @@ int main(int argc, char** argv) {
     opencensus::exporters::stats::StackdriverExporter::Register(
         std::move(stats_opts));
   }
+  grpc::EnableDefaultHealthCheckService(true);
+  grpc::reflection::InitProtoReflectionServerBuilderPlugin();
+  auto admin_server = StartAdminServer(admin_port);
   RunServer(port, hostname_suffix);
   return 0;
 }
