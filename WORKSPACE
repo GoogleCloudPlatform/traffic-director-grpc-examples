@@ -18,12 +18,19 @@ switched_rules_by_language(
     grpc = True,
 )
 
+# @rules_python//python:defs.bzl is required by @com_google_protobuf
+http_archive(
+    name = "rules_python",
+    sha256 = "778197e26c5fbeb07ac2a2c5ae405b30f6cb7ad1f5510ea6fdac03bded96cc6f",
+    url = "https://github.com/bazelbuild/rules_python/releases/download/0.2.0/rules_python-0.2.0.tar.gz",
+)
+
 http_archive(
     name = "com_github_grpc_grpc",
+    strip_prefix = "grpc-1.37.0",
     urls = [
         "https://github.com/grpc/grpc/archive/v1.37.0.tar.gz",
     ],
-    strip_prefix = "grpc-1.37.0",
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
