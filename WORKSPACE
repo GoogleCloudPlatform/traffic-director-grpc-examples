@@ -27,9 +27,9 @@ http_archive(
 
 http_archive(
     name = "com_github_grpc_grpc",
-    strip_prefix = "grpc-1.37.0",
+    strip_prefix = "grpc-1.36.0",
     urls = [
-        "https://github.com/grpc/grpc/archive/v1.37.0.tar.gz",
+        "https://github.com/grpc/grpc/archive/v1.36.0.tar.gz",
     ],
 )
 
