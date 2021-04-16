@@ -109,7 +109,7 @@ public class StatsServer {
               + "\n"
               + "\n  --port=PORT                The port to listen on. Default "
               + s.port
-              + "\n  --admin_port=PORT      The admin port to listen on. Default "
+              + "\n  --admin_port=PORT          The admin port to listen on. Default "
               + s.adminPort
               + "\n  --account_server=HOST      Address of the account server. Default "
               + s.accountServer
@@ -169,6 +169,9 @@ public class StatsServer {
   private void stop() throws InterruptedException {
     if (server != null) {
       server.shutdown().awaitTermination(30, SECONDS);
+    }
+    if (adminServer != null) {
+      adminServer.shutdown().awaitTermination(30, SECONDS);
     }
     if (accountChannel != null) {
       accountChannel.shutdownNow().awaitTermination(5, SECONDS);

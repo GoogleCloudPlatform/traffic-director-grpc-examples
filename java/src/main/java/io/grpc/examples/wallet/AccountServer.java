@@ -139,6 +139,9 @@ public class AccountServer {
     if (server != null) {
       server.shutdown().awaitTermination(30, SECONDS);
     }
+    if (adminServer != null) {
+      adminServer.shutdown().awaitTermination(30, SECONDS);
+    }
   }
 
   private void blockUntilShutdown() throws InterruptedException {
