@@ -107,6 +107,7 @@ public class AccountServer {
         .addServices(AdminInterface.getStandardServices())
         .build()
         .start();
+    logger.info("Admin server started, listening on " + adminPort);
     HealthStatusManager health = new HealthStatusManager();
     server =
         ServerBuilder.forPort(port)

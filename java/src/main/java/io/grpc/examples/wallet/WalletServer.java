@@ -137,6 +137,7 @@ public class WalletServer {
         .addServices(AdminInterface.getStandardServices())
         .build()
         .start();
+    logger.info("Admin server started, listening on " + adminPort);
     accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
     statsChannel = ManagedChannelBuilder.forTarget(statsServer).usePlaintext().build();
     HealthStatusManager health = new HealthStatusManager();

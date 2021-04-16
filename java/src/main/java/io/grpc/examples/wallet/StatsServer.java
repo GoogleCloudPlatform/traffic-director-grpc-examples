@@ -134,6 +134,7 @@ public class StatsServer {
         .addServices(AdminInterface.getStandardServices())
         .build()
         .start();
+    logger.info("Admin server started, listening on " + adminPort);
     accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
     exec = MoreExecutors.listeningDecorator(Executors.newSingleThreadScheduledExecutor());
     HealthStatusManager health = new HealthStatusManager();
