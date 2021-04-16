@@ -284,7 +284,7 @@ void RunServer(const std::string& port, const std::string& account_server,
 
 int main(int argc, char** argv) {
   std::string port = "18881";
-  std::string admin_port = "58881";
+  std::string admin_port = "28881";
   std::string account_server = "localhost:18882";
   std::string stats_server = "localhost:18883";
   std::string hostname_suffix = "";

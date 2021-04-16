@@ -109,7 +109,7 @@ void RunServer(const std::string& port, const std::string& hostname_suffix) {
 
 int main(int argc, char** argv) {
   std::string port = "18883";
-  std::string admin_port = "58883";
+  std::string admin_port = "28883";
   std::string hostname_suffix = "";
   std::string observability_project = "";
   std::string arg_str_port("--port");

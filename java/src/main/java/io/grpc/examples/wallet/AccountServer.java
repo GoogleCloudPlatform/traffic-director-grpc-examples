@@ -42,7 +42,7 @@ public class AccountServer {
   private Server adminServer;
 
   private int port = 18883;
-  private int adminPort = 58883;
+  private int adminPort = 28883;
   private String hostnameSuffix = "";
   private String observabilityProject = "";
 
@@ -103,12 +103,14 @@ public class AccountServer {
     if (!observabilityProject.isEmpty()) {
       Observability.registerExporters(observabilityProject);
     }
+    HealthStatusManager health = new HealthStatusManager();
     adminServer = ServerBuilder.forPort(adminPort)
+        .addService(ProtoReflectionService.newInstance())
+        .addService(health.getHealthService())
         .addServices(AdminInterface.getStandardServices())
         .build()
         .start();
     logger.info("Admin server started, listening on " + adminPort);
-    HealthStatusManager health = new HealthStatusManager();
     server =
         ServerBuilder.forPort(port)
             .addService(

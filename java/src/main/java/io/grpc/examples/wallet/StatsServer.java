@@ -55,7 +55,7 @@ public class StatsServer {
   private Server adminServer;
 
   private int port = 18882;
-  private int adminPort = 58882;
+  private int adminPort = 28882;
   private String accountServer = "localhost:18883";
   private String hostnameSuffix = "";
   private String observabilityProject = "";
@@ -130,14 +130,16 @@ public class StatsServer {
     if (!observabilityProject.isEmpty()) {
       Observability.registerExporters(observabilityProject);
     }
+    HealthStatusManager health = new HealthStatusManager();
     adminServer = ServerBuilder.forPort(adminPort)
+        .addService(ProtoReflectionService.newInstance())
+        .addService(health.getHealthService())
         .addServices(AdminInterface.getStandardServices())
         .build()
         .start();
     logger.info("Admin server started, listening on " + adminPort);
     accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
     exec = MoreExecutors.listeningDecorator(Executors.newSingleThreadScheduledExecutor());
-    HealthStatusManager health = new HealthStatusManager();
     server =
         ServerBuilder.forPort(port)
             .addService(

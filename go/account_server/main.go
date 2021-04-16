@@ -61,7 +61,7 @@ type arguments struct {
 func parseArguments() arguments {
 	result := arguments{}
 	flag.StringVar(&result.port, "port", "18883", "the port to listen on, default '18883'")
-	flag.StringVar(&result.adminPort, "admin_port", "58883", "the admin port to listen on, default '58883'")
+	flag.StringVar(&result.adminPort, "admin_port", "28883", "the admin port to listen on, default '28883'")
 	flag.StringVar(&result.hostnameSuffix, "hostname_suffix", "", "suffix to append to hostname in response header for outgoing RPCs, default ''")
 	flag.StringVar(&result.observabilityProject, "observability_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
 	flag.Parse()

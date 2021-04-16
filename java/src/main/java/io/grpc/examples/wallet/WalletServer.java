@@ -53,7 +53,7 @@ public class WalletServer {
   private Server server;
   private Server adminServer;
   private int port = 18881;
-  private int adminPort = 58881;
+  private int adminPort = 28881;
   private String accountServer = "localhost:18883";
   private String statsServer = "localhost:18882";
   private String hostnameSuffix = "";
@@ -133,14 +133,16 @@ public class WalletServer {
     if (!observabilityProject.isEmpty()) {
       Observability.registerExporters(observabilityProject);
     }
+    HealthStatusManager health = new HealthStatusManager();
     adminServer = ServerBuilder.forPort(adminPort)
+        .addService(ProtoReflectionService.newInstance())
+        .addService(health.getHealthService())
         .addServices(AdminInterface.getStandardServices())
         .build()
         .start();
     logger.info("Admin server started, listening on " + adminPort);
     accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
     statsChannel = ManagedChannelBuilder.forTarget(statsServer).usePlaintext().build();
-    HealthStatusManager health = new HealthStatusManager();
     server =
         ServerBuilder.forPort(port)
             .addService(
