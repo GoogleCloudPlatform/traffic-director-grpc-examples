@@ -9,6 +9,12 @@ http_archive(
     urls = ["https://github.com/googleapis/googleapis/archive/6e3b55e26bf5a9f7874b6ba1411a0cc50cb87a48.zip"],
 )
 
+http_archive(
+    name = "rules_python",
+    url = "https://github.com/bazelbuild/rules_python/releases/download/0.2.0/rules_python-0.2.0.tar.gz",
+    sha256 = "778197e26c5fbeb07ac2a2c5ae405b30f6cb7ad1f5510ea6fdac03bded96cc6f",
+)
+
 # Google APIs - used by Stackdriver exporter.
 load("@com_google_googleapis//:repository_rules.bzl", "switched_rules_by_language")
 
