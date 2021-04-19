@@ -103,14 +103,12 @@ public class AccountServer {
     if (!observabilityProject.isEmpty()) {
       Observability.registerExporters(observabilityProject);
     }
-    HealthStatusManager health = new HealthStatusManager();
     adminServer = ServerBuilder.forPort(adminPort)
-        .addService(ProtoReflectionService.newInstance())
-        .addService(health.getHealthService())
         .addServices(AdminInterface.getStandardServices())
         .build()
         .start();
     logger.info("Admin server started, listening on " + adminPort);
+    HealthStatusManager health = new HealthStatusManager();
     server =
         ServerBuilder.forPort(port)
             .addService(

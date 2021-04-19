@@ -130,16 +130,14 @@ public class StatsServer {
     if (!observabilityProject.isEmpty()) {
       Observability.registerExporters(observabilityProject);
     }
-    HealthStatusManager health = new HealthStatusManager();
     adminServer = ServerBuilder.forPort(adminPort)
-        .addService(ProtoReflectionService.newInstance())
-        .addService(health.getHealthService())
         .addServices(AdminInterface.getStandardServices())
         .build()
         .start();
     logger.info("Admin server started, listening on " + adminPort);
     accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
     exec = MoreExecutors.listeningDecorator(Executors.newSingleThreadScheduledExecutor());
+    HealthStatusManager health = new HealthStatusManager();
     server =
         ServerBuilder.forPort(port)
             .addService(

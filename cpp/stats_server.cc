@@ -197,6 +197,8 @@ void RunServer(const std::string& port, const std::string& account_server,
       account_server, grpc::InsecureChannelCredentials(), args)));
   // Listen on the given address without any authentication mechanism.
   std::cout << "Stats Server listening on " << server_address << std::endl;
+  grpc::EnableDefaultHealthCheckService(true);
+  grpc::reflection::InitProtoReflectionServerBuilderPlugin();
   ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   // Register "service" as the instance through which we'll communicate with
@@ -328,8 +330,6 @@ int main(int argc, char** argv) {
     opencensus::exporters::stats::StackdriverExporter::Register(
         std::move(stats_opts));
   }
-  grpc::EnableDefaultHealthCheckService(true);
-  grpc::reflection::InitProtoReflectionServerBuilderPlugin();
   auto admin_server = StartAdminServer(admin_port);
   RunServer(port, account_server, hostname_suffix, premium_only);
   return 0;
