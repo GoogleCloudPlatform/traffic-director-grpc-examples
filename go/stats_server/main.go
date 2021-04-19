@@ -47,7 +47,7 @@ type arguments struct {
 	accountServer        string
 	hostnameSuffix       string
 	premiumOnly          bool
-	observabilityProject string
+	gcpClientProject string
 }
 
 // parseArguments parses the command line arguments using the flag package.
@@ -57,7 +57,7 @@ func parseArguments() arguments {
 	flag.StringVar(&result.accountServer, "account_server", "localhost:18883", "address of the account service, default 'localhost:18883'")
 	flag.StringVar(&result.hostnameSuffix, "hostname_suffix", "", "suffix to append to hostname in response header for outgoing RPCs, default ''")
 	flag.BoolVar(&result.premiumOnly, "premium_only", false, "whether this service is for users with premium access only, default false")
-	flag.StringVar(&result.observabilityProject, "observability_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
+	flag.StringVar(&result.gcpClientProject, "gcp_client_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
 	flag.Parse()
 	return result
 }
@@ -136,8 +136,8 @@ func main() {
 
 	var dialOpts = []grpc.DialOption{grpc.WithInsecure()}
 	var serverOpts []grpc.ServerOption
-	if args.observabilityProject != "" {
-		sd := observability.ConfigureStackdriver(args.observabilityProject)
+	if args.gcpClientProject != "" {
+		sd := observability.ConfigureStackdriver(args.gcpClientProject)
 		defer sd.Flush()
 		defer sd.StopMetricsExporter()
 		dialOpts = append(dialOpts, grpc.WithStatsHandler(new(ocgrpc.ClientHandler)))

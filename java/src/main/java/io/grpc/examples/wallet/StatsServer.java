@@ -55,7 +55,7 @@ public class StatsServer {
   private int port = 18882;
   private String accountServer = "localhost:18883";
   private String hostnameSuffix = "";
-  private String observabilityProject = "";
+  private String gcpClientProject = "";
   private boolean premiumOnly;
 
   private ManagedChannel accountChannel;
@@ -87,8 +87,8 @@ public class StatsServer {
         accountServer = value;
       } else if ("hostname_suffix".equals(key)) {
         hostnameSuffix = value;
-      } else if ("observability_project".equals(key)) {
-        observabilityProject = value;
+      } else if ("gcp_client_project".equals(key)) {
+        gcpClientProject = value;
       } else if ("premium_only".equals(key)) {
         premiumOnly = Boolean.parseBoolean(value);
       } else {
@@ -110,8 +110,8 @@ public class StatsServer {
               + "Default \""
               + s.hostnameSuffix
               + "\""
-              + "\n  --observability_project=STR GCP project. If set, metrics and traces will be "
-              + "sent to Stackdriver. Default \"" + s.observabilityProject + "\""
+              + "\n  --gcp_client_project=STR GCP project. If set, metrics and traces will be "
+              + "sent to Stackdriver. Default \"" + s.gcpClientProject + "\""
               + "\n  --premium_only=true|false  If true, all non-premium RPCs are rejected. "
               + "Default "
               + s.premiumOnly);
@@ -120,8 +120,8 @@ public class StatsServer {
   }
 
   private void start() throws IOException {
-    if (!observabilityProject.isEmpty()) {
-      Observability.registerExporters(observabilityProject);
+    if (!gcpClientProject.isEmpty()) {
+      Observability.registerExporters(gcpClientProject);
     }
     accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
     exec = MoreExecutors.listeningDecorator(Executors.newSingleThreadScheduledExecutor());
