@@ -67,25 +67,18 @@ gcloud compute instance-groups set-named-ports grpcwallet-${hostname_suffix}-mig
 
 project_id="$(gcloud config list --format 'value(core.project)')"
 
-backend_config="affinityCookieTtlSec: 0
-backends:
+backend_config="backends:
 - balancingMode: UTILIZATION
   capacityScaler: 1.0
-  group: https://www.googleapis.com/compute/v1/projects/${project_id}/zones/us-central1-a/instanceGroups/grpcwallet-stats-mig-us-central1
+  group: https://www.googleapis.com/compute/v1/projects/${project_id}/zones/us-central1-a/instanceGroups/grpcwallet-${hostname_suffix}-mig-us-central1
 connectionDraining:
   drainingTimeoutSec: 0
-description: ''
 healthChecks:
 - https://www.googleapis.com/compute/v1/projects/${project_id}/global/healthChecks/grpcwallet-health-check
-kind: compute#backendService
 loadBalancingScheme: INTERNAL_SELF_MANAGED
-name: grpcwallet-stats-service
-port: 80
-portName: grpcwallet-stats-port
-protocol: GRPC
-selfLink: https://www.googleapis.com/compute/v1/projects/${project_id}/global/backendServices/grpcwallet-stats-service
-sessionAffinity: NONE
-timeoutSec: 30"
+name: grpcwallet-${hostname_suffix}-service
+portName: grpcwallet-${service_type}-port
+protocol: GRPC"
 
 if [ "${hostname_suffix}" = "stats" ]; then
     backend_config="${backend_config}
@@ -94,8 +87,3 @@ circuitBreakers:
 fi
 
 gcloud compute backend-services import grpcwallet-${hostname_suffix}-service --global <<< "${backend_config}"
-
-gcloud compute backend-services add-backend grpcwallet-${hostname_suffix}-service \
-    --instance-group grpcwallet-${hostname_suffix}-mig-us-central1 \
-    --instance-group-zone us-central1-a \
-    --global
