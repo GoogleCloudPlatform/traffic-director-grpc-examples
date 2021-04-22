@@ -23,6 +23,7 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
 import io.grpc.Server;
+import io.grpc.services.AdminInterface;
 import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
 import io.grpc.Status;
@@ -50,7 +51,9 @@ public class WalletServer {
   private static final Logger logger = Logger.getLogger(WalletServer.class.getName());
 
   private Server server;
+  private Server adminServer;
   private int port = 18881;
+  private int adminPort = 28881;
   private String accountServer = "localhost:18883";
   private String statsServer = "localhost:18882";
   private String hostnameSuffix = "";
@@ -82,6 +85,8 @@ public class WalletServer {
       String value = parts[1];
       if ("port".equals(key)) {
         port = Integer.parseInt(value);
+      } else if ("admin_port".equals(key)) {
+        adminPort = Integer.parseInt(value);
       } else if ("account_server".equals(key)) {
         accountServer = value;
       } else if ("stats_server".equals(key)) {
@@ -105,6 +110,8 @@ public class WalletServer {
               + "\n"
               + "\n  --port=PORT                The port to listen on. Default "
               + s.port
+              + "\n  --admin_port=PORT          The admin port to listen on. Default "
+              + s.adminPort
               + "\n  --account_server=HOST      Address of the account server. Default "
               + s.accountServer
               + "\n  --stats_server=HOST        Address of the stats server. Default "
@@ -126,6 +133,11 @@ public class WalletServer {
     if (!observabilityProject.isEmpty()) {
       Observability.registerExporters(observabilityProject);
     }
+    adminServer = ServerBuilder.forPort(adminPort)
+        .addServices(AdminInterface.getStandardServices())
+        .build()
+        .start();
+    logger.info("Admin server started, listening on " + adminPort);
     accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
     statsChannel = ManagedChannelBuilder.forTarget(statsServer).usePlaintext().build();
     HealthStatusManager health = new HealthStatusManager();
@@ -161,6 +173,9 @@ public class WalletServer {
   private void stop() throws InterruptedException {
     if (server != null) {
       server.shutdown().awaitTermination(30, SECONDS);
+    }
+    if (adminServer != null) {
+      adminServer.shutdown().awaitTermination(30, SECONDS);
     }
     if (accountChannel != null) {
       accountChannel.shutdownNow().awaitTermination(5, SECONDS);
