@@ -16,6 +16,7 @@
 
 package io.grpc.examples.wallet;
 
+import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import io.grpc.CallOptions;
@@ -45,12 +46,15 @@ public class Client {
 
   static final String ALICE_TOKEN = "2bd806c9";
   static final String BOB_TOKEN = "81b637d8";
+  static final Metadata.Key<String> ROUTE_MD_KEY =
+      Metadata.Key.of("route", ASCII_STRING_MARSHALLER);
 
   private String command;
   private String walletServer = "localhost:18881";
   private String statsServer = "localhost:18882";
   private String user = "Alice";
   private String observabilityProject = "";
+  private String route = "";
   private boolean watch;
   private boolean unaryWatch;
 
@@ -77,6 +81,9 @@ public class Client {
       headers.put(WalletInterceptors.TOKEN_MD_KEY, BOB_TOKEN);
       headers.put(WalletInterceptors.MEMBERSHIP_MD_KEY, "normal");
     }
+    if (!route.isEmpty()) {
+      headers.put(ROUTE_MD_KEY, route);
+    }
     Channel channel =
         ClientInterceptors.intercept(managedChannel, new HeaderClientInterceptor(headers));
 
@@ -98,7 +105,8 @@ public class Client {
         BalanceRequest request =
             BalanceRequest.newBuilder().setIncludeBalancePerAddress(true).build();
         if (watch) {
-          Iterator<BalanceResponse> responses = blockingStub.watchBalance(request);
+          Iterator<BalanceResponse> responses = blockingStub.withWaitForReady().watchBalance(
+              request);
           while (responses.hasNext()) {
             printBalanceResponse(responses.next());
           }
@@ -191,6 +199,8 @@ public class Client {
         watch = Boolean.parseBoolean(value);
       } else if ("unary_watch".equals(key)) {
         unaryWatch = Boolean.parseBoolean(value);
+      } else if ("route".equals(key)) {
+        route = value;
       } else {
         System.err.println("Unknown argument: " + key);
         usage = true;
