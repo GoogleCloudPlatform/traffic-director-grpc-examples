@@ -27,7 +27,6 @@ import (
 
 	"go.opencensus.io/plugin/ocgrpc"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/admin"
 	"google.golang.org/grpc/codes"
 	walletpb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet"
 	accountpb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/account"
@@ -56,7 +55,6 @@ var users = map[string]map[string]int{
 
 type arguments struct {
 	port                 string
-	adminPort            string
 	accountServer        string
 	statsServer          string
 	hostnameSuffix       string
@@ -68,7 +66,6 @@ type arguments struct {
 func parseArguments() arguments {
 	result := arguments{}
 	flag.StringVar(&result.port, "port", "18881", "the port to listen on, default '18881'")
-	flag.StringVar(&result.adminPort, "admin_port", "28881", "the admin port to listen on, default '28881'")
 	flag.StringVar(&result.accountServer, "account_server", "localhost:18883", "address of the account service, default 'localhost:18883'")
 	flag.StringVar(&result.statsServer, "stats_server", "localhost:18882", "address of the stats service, default 'localhost:18882'")
 	flag.StringVar(&result.hostnameSuffix, "hostname_suffix", "", "suffix to append to hostname in response header for outgoing RPCs, default ''")
@@ -209,20 +206,6 @@ func main() {
 	}
 	defer statsConn.Close()
 	statsClient := statspb.NewStatsClient(statsConn)
-
-	// Start admin server
-	adminListener, err := net.Listen("tcp", "localhost:"+args.adminPort)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	adminServer := grpc.NewServer()
-	cleanup, err := admin.Register(adminServer)
-	if err != nil {
-		log.Fatalf("failed to register admin: %v", err)
-	}
-	defer cleanup()
-	go adminServer.Serve(adminListener)
-	defer adminServer.Stop()
 
 	// Listen & serve.
 	lis, err := net.Listen("tcp", ":"+args.port)
