@@ -70,11 +70,11 @@ project_id="$(gcloud config list --format 'value(core.project)')"
 backend_config="backends:
 - balancingMode: UTILIZATION
   capacityScaler: 1.0
-  group: https://www.googleapis.com/compute/v1/projects/${project_id}/zones/us-central1-a/instanceGroups/grpcwallet-${hostname_suffix}-mig-us-central1
+  group: projects/${project_id}/zones/us-central1-a/instanceGroups/grpcwallet-${hostname_suffix}-mig-us-central1
 connectionDraining:
   drainingTimeoutSec: 0
 healthChecks:
-- https://www.googleapis.com/compute/v1/projects/${project_id}/global/healthChecks/grpcwallet-health-check
+- projects/${project_id}/global/healthChecks/grpcwallet-health-check
 loadBalancingScheme: INTERNAL_SELF_MANAGED
 name: grpcwallet-${hostname_suffix}-service
 portName: grpcwallet-${service_type}-port
