@@ -133,7 +133,10 @@ class WalletServiceImpl final : public Wallet::Service {
 
   Status FetchBalance(ServerContext* context, const BalanceRequest* request,
                       BalanceResponse* response) override {
-    opencensus::trace::Span span = grpc::GetSpanFromServerContext(context);
+    opencensus::trace::Span span =
+        context->census_context() == nullptr
+            ? opencensus::trace::Span::BlankSpan()
+            : grpc::GetSpanFromServerContext(context);
     {
       // Run in OpenCensus span received from the client to correlate the traces
       // in Cloud Monitoring.
@@ -176,7 +179,10 @@ class WalletServiceImpl final : public Wallet::Service {
 
   Status WatchBalance(ServerContext* context, const BalanceRequest* request,
                       ServerWriter<BalanceResponse>* writer) override {
-    opencensus::trace::Span span = grpc::GetSpanFromServerContext(context);
+    opencensus::trace::Span span =
+        context->census_context() == nullptr
+            ? opencensus::trace::Span::BlankSpan()
+            : grpc::GetSpanFromServerContext(context);
     {
       // Run in OpenCensus span received from the client to correlate the traces
       // in Cloud Monitoring.
@@ -365,9 +371,8 @@ int main(int argc, char** argv) {
         gcp_client_project = arg_val.substr(start_pos + 1);
         continue;
       } else {
-        std::cout
-            << "The only correct argument syntax is --gcp_client_project="
-            << std::endl;
+        std::cout << "The only correct argument syntax is --gcp_client_project="
+                  << std::endl;
         return 1;
       }
     }
@@ -377,8 +382,7 @@ int main(int argc, char** argv) {
             << ", stats_server: " << stats_server
             << ", hostname_suffix: " << hostname_suffix
             << ", v1_behavior: " << v1_behavior
-            << ", gcp_client_project: " << gcp_client_project
-            << std::endl;
+            << ", gcp_client_project: " << gcp_client_project << std::endl;
   if (!gcp_client_project.empty()) {
     grpc::RegisterOpenCensusPlugin();
     grpc::RegisterOpenCensusViewsForExport();

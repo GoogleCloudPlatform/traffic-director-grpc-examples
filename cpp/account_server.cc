@@ -49,7 +49,10 @@ class AccountServiceImpl final : public Account::Service {
  private:
   Status GetUserInfo(ServerContext* context, const GetUserInfoRequest* request,
                      GetUserInfoResponse* response) override {
-    opencensus::trace::Span span = grpc::GetSpanFromServerContext(context);
+    opencensus::trace::Span span =
+        context->census_context() == nullptr
+            ? opencensus::trace::Span::BlankSpan()
+            : grpc::GetSpanFromServerContext(context);
     {
       // Run in OpenCensus span received from the client to correlate the traces
       // in Cloud Monitoring.
@@ -138,17 +141,15 @@ int main(int argc, char** argv) {
         gcp_client_project = arg_val.substr(start_pos + 1);
         continue;
       } else {
-        std::cout
-            << "The only correct argument syntax is --gcp_client_project="
-            << std::endl;
+        std::cout << "The only correct argument syntax is --gcp_client_project="
+                  << std::endl;
         return 1;
       }
     }
   }
   std::cout << "Account Server arguments: port: " << port
             << ", hostname_suffix: " << hostname_suffix
-            << ", gcp_client_project: " << gcp_client_project
-            << std::endl;
+            << ", gcp_client_project: " << gcp_client_project << std::endl;
   if (!gcp_client_project.empty()) {
     grpc::RegisterOpenCensusPlugin();
     grpc::RegisterOpenCensusViewsForExport();
