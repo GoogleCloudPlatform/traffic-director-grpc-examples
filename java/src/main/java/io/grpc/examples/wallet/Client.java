@@ -53,7 +53,7 @@ public class Client {
   private String walletServer = "localhost:18881";
   private String statsServer = "localhost:18882";
   private String user = "Alice";
-  private String observabilityProject = "";
+  private String gcpClientProject = "";
   private String route = "";
   private boolean watch;
   private boolean unaryWatch;
@@ -61,8 +61,8 @@ public class Client {
   public void run() throws InterruptedException, ExecutionException {
     logger.info("Will try to run " + command);
 
-    if (!observabilityProject.isEmpty()) {
-      Observability.registerExporters(observabilityProject);
+    if (!gcpClientProject.isEmpty()) {
+      Observability.registerExporters(gcpClientProject);
     }
 
     String target;
@@ -131,7 +131,7 @@ public class Client {
       return;
     } finally {
       managedChannel.shutdownNow().awaitTermination(5, SECONDS);
-      if (observabilityProject != "") {
+      if (gcpClientProject != "") {
         // For demo purposes, shutdown the trace exporter to flush any pending traces.
         Tracing.getExportComponent().shutdown();
       }
@@ -193,8 +193,8 @@ public class Client {
           usage = true;
           break;
         }
-      } else if ("observability_project".equals(key)) {
-        observabilityProject = value;
+      } else if ("gcp_client_project".equals(key)) {
+        gcpClientProject = value;
       } else if ("watch".equals(key)) {
         watch = Boolean.parseBoolean(value);
       } else if ("unary_watch".equals(key)) {
@@ -224,8 +224,8 @@ public class Client {
               + c.statsServer
               + "\n  --user=Alice|Bob          The user to call the RPCs. Default "
               + c.user
-              + "\n  --observability_project=STR GCP project. If set, metrics and traces will be "
-              + "sent to Stackdriver. Default \"" + c.observabilityProject + "\""
+              + "\n  --gcp_client_project=STR GCP project. If set, metrics and traces will be "
+              + "sent to Stackdriver. Default \"" + c.gcpClientProject + "\""
               + "\n  --watch=true|false        Whether to call the streaming RPC. Default "
               + c.watch
               + "\n  --unary_watch=true|false  Watch for balance updates with unary RPC"

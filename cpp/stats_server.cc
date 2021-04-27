@@ -119,7 +119,10 @@ class StatsServiceImpl final : public Stats::Service {
 
   Status FetchPrice(ServerContext* context, const PriceRequest* request,
                     PriceResponse* response) override {
-    opencensus::trace::Span span = grpc::GetSpanFromServerContext(context);
+    opencensus::trace::Span span =
+        context->census_context() == nullptr
+            ? opencensus::trace::Span::BlankSpan()
+            : grpc::GetSpanFromServerContext(context);
     {
       // Run in OpenCensus span received from the client to correlate the traces
       // in Cloud Monitoring.
@@ -136,7 +139,10 @@ class StatsServiceImpl final : public Stats::Service {
 
   Status WatchPrice(ServerContext* context, const PriceRequest* request,
                     ServerWriter<PriceResponse>* writer) override {
-    opencensus::trace::Span span = grpc::GetSpanFromServerContext(context);
+    opencensus::trace::Span span =
+        context->census_context() == nullptr
+            ? opencensus::trace::Span::BlankSpan()
+            : grpc::GetSpanFromServerContext(context);
     {
       // Run in OpenCensus span received from the client to correlate the traces
       // in Cloud Monitoring.
@@ -206,12 +212,12 @@ int main(int argc, char** argv) {
   std::string account_server = "localhost:18883";
   std::string hostname_suffix = "";
   bool premium_only = false;
-  std::string observability_project = "";
+  std::string gcp_client_project = "";
   std::string arg_str_port("--port");
   std::string arg_str_account_server("--account_server");
   std::string arg_str_hostname_suffix("--hostname_suffix");
   std::string arg_str_premium_only("--premium_only");
-  std::string arg_str_observability_project("--observability_project");
+  std::string arg_str_gcp_client_project("--gcp_client_project");
   for (int i = 1; i < argc; ++i) {
     std::string arg_val = argv[i];
     size_t start_pos = arg_val.find(arg_str_port);
@@ -271,16 +277,15 @@ int main(int argc, char** argv) {
         return 1;
       }
     }
-    start_pos = arg_val.find(arg_str_observability_project);
+    start_pos = arg_val.find(arg_str_gcp_client_project);
     if (start_pos != std::string::npos) {
-      start_pos += arg_str_observability_project.size();
+      start_pos += arg_str_gcp_client_project.size();
       if (arg_val[start_pos] == '=') {
-        observability_project = arg_val.substr(start_pos + 1);
+        gcp_client_project = arg_val.substr(start_pos + 1);
         continue;
       } else {
-        std::cout
-            << "The only correct argument syntax is --observability_project="
-            << std::endl;
+        std::cout << "The only correct argument syntax is --gcp_client_project="
+                  << std::endl;
         return 1;
       }
     }
@@ -289,19 +294,18 @@ int main(int argc, char** argv) {
             << ", account_server: " << account_server
             << ", hostname_suffix: " << hostname_suffix
             << ", premium_only: " << premium_only
-            << ", observability_project: " << observability_project
-            << std::endl;
-  if (!observability_project.empty()) {
+            << ", gcp_client_project: " << gcp_client_project << std::endl;
+  if (!gcp_client_project.empty()) {
     grpc::RegisterOpenCensusPlugin();
     grpc::RegisterOpenCensusViewsForExport();
     opencensus::trace::TraceConfig::SetCurrentTraceParams(
         {128, 128, 128, 128, opencensus::trace::ProbabilitySampler(1.0)});
     opencensus::exporters::trace::StackdriverOptions trace_opts;
-    trace_opts.project_id = observability_project;
+    trace_opts.project_id = gcp_client_project;
     opencensus::exporters::trace::StackdriverExporter::Register(
         std::move(trace_opts));
     opencensus::exporters::stats::StackdriverOptions stats_opts;
-    stats_opts.project_id = observability_project;
+    stats_opts.project_id = gcp_client_project;
     // This must be unique among all processes exporting to Stackdriver
     stats_opts.opencensus_task = "stats-server-" + std::to_string(getpid());
     opencensus::exporters::stats::StackdriverExporter::Register(

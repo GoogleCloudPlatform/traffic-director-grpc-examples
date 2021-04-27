@@ -56,7 +56,7 @@ type arguments struct {
 	user                 string
 	watch                bool
 	unaryWatch           bool
-	observabilityProject string
+	gcpClientProject     string
 	route                string
 }
 
@@ -70,7 +70,7 @@ func parseArguments() {
 	flags.StringVar(&args.user, "user", "Alice", "the name of the user account, default 'Alice'")
 	flags.BoolVar(&args.watch, "watch", false, "if the balance/price should be watched rather than queried once, default false")
 	flags.BoolVar(&args.unaryWatch, "unary_watch", false, "if the balance/price should be watched but with repeated unary RPCs rather than a streaming rpc, default false")
-	flags.StringVar(&args.observabilityProject, "observability_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
+	flags.StringVar(&args.gcpClientProject, "gcp_client_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
 	flags.StringVar(&args.route, "route", "", "a string value to set for the 'route' header, unset by default")
 	flags.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
@@ -133,7 +133,7 @@ func handleBalanceResponse(r *walletpb.BalanceResponse) {
 // balanceSubcommand handles the 'balance' subcommand.
 func balanceSubcommand() {
 	var opts = []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}
-	if args.observabilityProject != "" {
+	if args.gcpClientProject != "" {
 		opts = append(opts, grpc.WithStatsHandler(new(ocgrpc.ClientHandler)))
 	}
 	conn, err := grpc.Dial(args.walletServer, opts...)
@@ -188,7 +188,7 @@ func balanceSubcommand() {
 // priceSubcommand handles the 'price' subcommand.
 func priceSubcommand() {
 	var opts = []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}
-	if args.observabilityProject != "" {
+	if args.gcpClientProject != "" {
 		opts = append(opts, grpc.WithStatsHandler(new(ocgrpc.ClientHandler)))
 	}
 	conn, err := grpc.Dial(args.statsServer, opts...)
@@ -236,8 +236,8 @@ func priceSubcommand() {
 func main() {
 	parseArguments()
 
-	if args.observabilityProject != "" {
-		sd := observability.ConfigureStackdriver(args.observabilityProject)
+	if args.gcpClientProject != "" {
+		sd := observability.ConfigureStackdriver(args.gcpClientProject)
 		defer sd.Flush()
 		defer sd.StopMetricsExporter()
 	}
