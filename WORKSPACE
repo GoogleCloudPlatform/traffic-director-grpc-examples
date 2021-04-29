@@ -27,9 +27,9 @@ switched_rules_by_language(
 http_archive(
     name = "com_github_grpc_grpc",
     urls = [
-        "https://github.com/grpc/grpc/archive/v1.37.0.tar.gz",
+        "https://github.com/grpc/grpc/archive/v1.37.1.tar.gz",
     ],
-    strip_prefix = "grpc-1.37.0",
+    strip_prefix = "grpc-1.37.1",
 )
 
 load("@com_github_grpc_grpc//bazel:grpc_deps.bzl", "grpc_deps")
