@@ -58,6 +58,7 @@ gcloud compute instance-templates create grpcwallet-${hostname_suffix}-template 
     --tags=allow-health-checks \
     --image-family=debian-10 \
     --image-project=debian-cloud \
+    --network-interface=no-address \
     --metadata-from-file=startup-script=<(echo "${startup_script}")
 
 gcloud compute instance-groups managed create grpcwallet-${hostname_suffix}-mig-us-central1 \
