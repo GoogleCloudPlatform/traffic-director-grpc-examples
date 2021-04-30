@@ -57,7 +57,7 @@ public class WalletServer {
   private String accountServer = "localhost:18883";
   private String statsServer = "localhost:18882";
   private String hostnameSuffix = "";
-  private String observabilityProject = "";
+  private String gcpClientProject = "";
   private boolean v1Behavior;
 
   private ManagedChannel accountChannel;
@@ -93,8 +93,8 @@ public class WalletServer {
         statsServer = value;
       } else if ("hostname_suffix".equals(key)) {
         hostnameSuffix = value;
-      } else if ("observability_project".equals(key)) {
-        observabilityProject = value;
+      } else if ("gcp_client_project".equals(key)) {
+        gcpClientProject = value;
       } else if ("v1_behavior".equals(key)) {
         v1Behavior = Boolean.parseBoolean(value);
       } else {
@@ -120,8 +120,8 @@ public class WalletServer {
               + "Default \""
               + s.hostnameSuffix
               + "\""
-              + "\n  --observability_project=STR GCP project. If set, metrics and traces will be "
-              + "sent to Stackdriver. Default \"" + s.observabilityProject + "\""
+              + "\n  --gcp_client_project=STR GCP project. If set, metrics and traces will be "
+              + "sent to Stackdriver. Default \"" + s.gcpClientProject + "\""
               + "\n  --v1_behavior=true|false   If true, only aggregate balance is reported. "
               + "Default "
               + s.v1Behavior);
@@ -130,8 +130,8 @@ public class WalletServer {
   }
 
   private void start() throws IOException {
-    if (!observabilityProject.isEmpty()) {
-      Observability.registerExporters(observabilityProject);
+    if (!gcpClientProject.isEmpty()) {
+      Observability.registerExporters(gcpClientProject);
     }
     adminServer = ServerBuilder.forPort(adminPort)
         .addServices(AdminInterface.getStandardServices())

@@ -44,7 +44,7 @@ public class AccountServer {
   private int port = 18883;
   private int adminPort = 28883;
   private String hostnameSuffix = "";
-  private String observabilityProject = "";
+  private String gcpClientProject = "";
 
   void parseArgs(String[] args) {
     boolean usage = false;
@@ -72,8 +72,8 @@ public class AccountServer {
         adminPort = Integer.parseInt(value);
       } else if ("hostname_suffix".equals(key)) {
         hostnameSuffix = value;
-      } else if ("observability_project".equals(key)) {
-        observabilityProject = value;
+      } else if ("gcp_client_project".equals(key)) {
+        gcpClientProject = value;
       } else {
         System.err.println("Unknown argument: " + key);
         usage = true;
@@ -93,15 +93,15 @@ public class AccountServer {
               + "Default \""
               + s.hostnameSuffix
               + "\""
-              + "\n  --observability_project=STR GCP project. If set, metrics and traces will be "
-              + "sent to Stackdriver. Default \"" + s.observabilityProject + "\"");
+              + "\n  --gcp_client_project=STR GCP project. If set, metrics and traces will be "
+              + "sent to Stackdriver. Default \"" + s.gcpClientProject + "\"");
       System.exit(1);
     }
   }
 
   private void start() throws IOException {
-    if (!observabilityProject.isEmpty()) {
-      Observability.registerExporters(observabilityProject);
+    if (!gcpClientProject.isEmpty()) {
+      Observability.registerExporters(gcpClientProject);
     }
     adminServer = ServerBuilder.forPort(adminPort)
         .addServices(AdminInterface.getStandardServices())

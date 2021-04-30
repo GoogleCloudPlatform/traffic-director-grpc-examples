@@ -61,7 +61,7 @@ type arguments struct {
 	statsServer          string
 	hostnameSuffix       string
 	v1Behavior           bool
-	observabilityProject string
+	gcpClientProject string
 }
 
 // parseArguments parses the command line arguments using the flag package.
@@ -73,7 +73,7 @@ func parseArguments() arguments {
 	flag.StringVar(&result.statsServer, "stats_server", "localhost:18882", "address of the stats service, default 'localhost:18882'")
 	flag.StringVar(&result.hostnameSuffix, "hostname_suffix", "", "suffix to append to hostname in response header for outgoing RPCs, default ''")
 	flag.BoolVar(&result.v1Behavior, "v1_behavior", false, "usage")
-	flag.StringVar(&result.observabilityProject, "observability_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
+	flag.StringVar(&result.gcpClientProject, "gcp_client_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
 	flag.Parse()
 	return result
 }
@@ -186,8 +186,8 @@ func main() {
 
 	var dialOpts = []grpc.DialOption{grpc.WithInsecure()}
 	var serverOpts []grpc.ServerOption
-	if args.observabilityProject != "" {
-		sd := observability.ConfigureStackdriver(args.observabilityProject)
+	if args.gcpClientProject != "" {
+		sd := observability.ConfigureStackdriver(args.gcpClientProject)
 		defer sd.Flush()
 		defer sd.StopMetricsExporter()
 		dialOpts = append(dialOpts, grpc.WithStatsHandler(new(ocgrpc.ClientHandler)))

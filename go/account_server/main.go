@@ -54,7 +54,7 @@ type arguments struct {
 	port                 string
 	adminPort            string
 	hostnameSuffix       string
-	observabilityProject string
+	gcpClientProject string
 }
 
 // parseArguments parses the command line arguments using the flag package.
@@ -63,7 +63,7 @@ func parseArguments() arguments {
 	flag.StringVar(&result.port, "port", "18883", "the port to listen on, default '18883'")
 	flag.StringVar(&result.adminPort, "admin_port", "28883", "the admin port to listen on, default '28883'")
 	flag.StringVar(&result.hostnameSuffix, "hostname_suffix", "", "suffix to append to hostname in response header for outgoing RPCs, default ''")
-	flag.StringVar(&result.observabilityProject, "observability_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
+	flag.StringVar(&result.gcpClientProject, "gcp_client_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
 	flag.Parse()
 	return result
 }
@@ -93,8 +93,8 @@ func main() {
 	args := parseArguments()
 
 	var serverOpts []grpc.ServerOption
-	if args.observabilityProject != "" {
-		sd := observability.ConfigureStackdriver(args.observabilityProject)
+	if args.gcpClientProject != "" {
+		sd := observability.ConfigureStackdriver(args.gcpClientProject)
 		defer sd.Flush()
 		defer sd.StopMetricsExporter()
 		serverOpts = append(serverOpts, grpc.StatsHandler(&ocgrpc.ServerHandler{}))
