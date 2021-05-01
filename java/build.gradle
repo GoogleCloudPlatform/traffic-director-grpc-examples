@@ -31,9 +31,9 @@ dependencies {
     implementation "io.grpc:grpc-protobuf:${grpcVersion}"
     implementation "io.grpc:grpc-stub:${grpcVersion}"
     implementation "io.grpc:grpc-services:${grpcVersion}"
+    implementation "io.grpc:grpc-xds:${grpcVersion}"
 
     runtimeOnly "io.grpc:grpc-netty-shaded:${grpcVersion}"
-    runtimeOnly "io.grpc:grpc-xds:${grpcVersion}"
     runtime "io.opencensus:opencensus-impl:${opencensusVersion}"
 
     testImplementation "com.google.truth:truth:1.1.2"

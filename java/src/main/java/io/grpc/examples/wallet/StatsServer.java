@@ -22,10 +22,13 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import com.google.common.util.concurrent.ListenableScheduledFuture;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
+import io.grpc.ChannelCredentials;
+import io.grpc.Grpc;
+import io.grpc.InsecureChannelCredentials;
+import io.grpc.InsecureServerCredentials;
 import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import io.grpc.Server;
-import io.grpc.ServerBuilder;
+import io.grpc.ServerCredentials;
 import io.grpc.ServerInterceptors;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -41,6 +44,9 @@ import io.grpc.protobuf.services.ProtoReflectionService;
 import io.grpc.services.HealthStatusManager;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
+import io.grpc.xds.XdsChannelCredentials;
+import io.grpc.xds.XdsServerBuilder;
+import io.grpc.xds.XdsServerCredentials;
 import java.io.IOException;
 import java.util.concurrent.Executors;
 import java.util.logging.Level;
@@ -50,13 +56,18 @@ import java.util.logging.Logger;
 public class StatsServer {
   private static final Logger logger = Logger.getLogger(StatsServer.class.getName());
 
+  private enum CredentialsType {
+    INSECURE,
+    XDS
+  }
   private Server server;
-
+  private Server healthServer;
   private int port = 18882;
   private String accountServer = "localhost:18883";
   private String hostnameSuffix = "";
   private String gcpClientProject = "";
   private boolean premiumOnly;
+  private CredentialsType credentialsType = CredentialsType.INSECURE;
 
   private ManagedChannel accountChannel;
   private ListeningScheduledExecutorService exec;
@@ -91,6 +102,8 @@ public class StatsServer {
         gcpClientProject = value;
       } else if ("premium_only".equals(key)) {
         premiumOnly = Boolean.parseBoolean(value);
+      } else if ("creds".equals(key)) {
+        credentialsType = CredentialsType.valueOf(value.toUpperCase());
       } else {
         System.err.println("Unknown argument: " + key);
         usage = true;
@@ -114,7 +127,10 @@ public class StatsServer {
               + "sent to Stackdriver. Default \"" + s.gcpClientProject + "\""
               + "\n  --premium_only=true|false  If true, all non-premium RPCs are rejected. "
               + "Default "
-              + s.premiumOnly);
+              + s.premiumOnly
+              + "\n  --creds=insecure|xds  . Type of credentials to use on the client & server. "
+              + "Default "
+              + s.credentialsType.toString().toLowerCase());
       System.exit(1);
     }
   }
@@ -123,11 +139,22 @@ public class StatsServer {
     if (!gcpClientProject.isEmpty()) {
       Observability.registerExporters(gcpClientProject);
     }
-    accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
+    ChannelCredentials channelCredentials =
+        credentialsType == CredentialsType.XDS
+            ? XdsChannelCredentials.create(InsecureChannelCredentials.create())
+            : InsecureChannelCredentials.create();
+    accountChannel = Grpc.newChannelBuilder(accountServer, channelCredentials).build();
     exec = MoreExecutors.listeningDecorator(Executors.newSingleThreadScheduledExecutor());
     HealthStatusManager health = new HealthStatusManager();
+    ServerCredentials serverCredentials =
+        credentialsType == CredentialsType.XDS
+            ? XdsServerCredentials.create(InsecureServerCredentials.create())
+            : InsecureServerCredentials.create();
+    // Since the main server may be using TLS, we start a second server just for plaintext health
+    // checks
+    int healthPort = port + 1;
     server =
-        ServerBuilder.forPort(port)
+        XdsServerBuilder.forPort(port, serverCredentials)
             .addService(
                 ServerInterceptors.intercept(
                     new StatsImpl(accountChannel, exec, premiumOnly),
@@ -137,8 +164,14 @@ public class StatsServer {
             .addService(health.getHealthService())
             .build()
             .start();
+    healthServer =
+        XdsServerBuilder.forPort(healthPort, InsecureServerCredentials.create())
+            .addService(health.getHealthService()) // allow management servers to monitor health
+            .build()
+            .start();
     health.setStatus("", ServingStatus.SERVING);
     logger.info("Server started, listening on " + port);
+    logger.info("Plaintext Health Server started, listening on " + healthPort);
     Runtime.getRuntime()
         .addShutdownHook(
             new Thread() {
@@ -159,6 +192,9 @@ public class StatsServer {
     if (server != null) {
       server.shutdown().awaitTermination(30, SECONDS);
     }
+    if (healthServer != null) {
+      healthServer.shutdown().awaitTermination(30, SECONDS);
+    }
     if (accountChannel != null) {
       accountChannel.shutdownNow().awaitTermination(5, SECONDS);
     }
@@ -170,6 +206,9 @@ public class StatsServer {
   private void blockUntilShutdown() throws InterruptedException {
     if (server != null) {
       server.awaitTermination();
+    }
+    if (healthServer != null) {
+      healthServer.awaitTermination();
     }
   }
 

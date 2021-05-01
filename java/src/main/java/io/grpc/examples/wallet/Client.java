@@ -21,19 +21,22 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import io.grpc.CallOptions;
 import io.grpc.Channel;
+import io.grpc.ChannelCredentials;
 import io.grpc.ClientCall;
 import io.grpc.ClientInterceptor;
 import io.grpc.ClientInterceptors;
 import io.grpc.ForwardingClientCall.SimpleForwardingClientCall;
 import io.grpc.ForwardingClientCallListener.SimpleForwardingClientCallListener;
+import io.grpc.Grpc;
+import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.StatusRuntimeException;
 import io.grpc.examples.wallet.stats.PriceRequest;
 import io.grpc.examples.wallet.stats.PriceResponse;
 import io.grpc.examples.wallet.stats.StatsGrpc;
+import io.grpc.xds.XdsChannelCredentials;
 import io.opencensus.trace.Tracing;
 import java.util.Iterator;
 import java.util.concurrent.ExecutionException;
@@ -43,6 +46,11 @@ import java.util.logging.Logger;
 /** A client for the gRPC Wallet example. */
 public class Client {
   private static final Logger logger = Logger.getLogger(Client.class.getName());
+
+  private enum CredentialsType {
+    INSECURE,
+    XDS
+  }
 
   static final String ALICE_TOKEN = "2bd806c9";
   static final String BOB_TOKEN = "81b637d8";
@@ -57,6 +65,7 @@ public class Client {
   private String route = "";
   private boolean watch;
   private boolean unaryWatch;
+  private CredentialsType credentialsType = CredentialsType.INSECURE;
 
   public void run() throws InterruptedException, ExecutionException {
     logger.info("Will try to run " + command);
@@ -71,8 +80,13 @@ public class Client {
     } else {
       target = walletServer;
     }
+    ChannelCredentials channelCredentials =
+        credentialsType == CredentialsType.XDS
+            ? XdsChannelCredentials.create(InsecureChannelCredentials.create())
+            : InsecureChannelCredentials.create();
 
-    ManagedChannel managedChannel = ManagedChannelBuilder.forTarget(target).usePlaintext().build();
+    Grpc.newChannelBuilder(target, channelCredentials).build();
+    ManagedChannel managedChannel = Grpc.newChannelBuilder(target, channelCredentials).build();
     Metadata headers = new Metadata();
     if ("Alice".equals(user)) {
       headers.put(WalletInterceptors.TOKEN_MD_KEY, ALICE_TOKEN);
@@ -201,6 +215,8 @@ public class Client {
         unaryWatch = Boolean.parseBoolean(value);
       } else if ("route".equals(key)) {
         route = value;
+      } else if ("creds".equals(key)) {
+        credentialsType = CredentialsType.valueOf(value.toUpperCase());
       } else {
         System.err.println("Unknown argument: " + key);
         usage = true;
@@ -232,7 +248,10 @@ public class Client {
               + " in loop (only applies to balance "
               + "\n                            command). Requires watch=false."
               + " Default "
-              + c.unaryWatch);
+              + c.unaryWatch
+              + "\n  --creds=insecure|xds  . Type of credentials to use on the client. "
+              + "Default "
+              + c.credentialsType.toString().toLowerCase());
       System.exit(1);
     }
   }

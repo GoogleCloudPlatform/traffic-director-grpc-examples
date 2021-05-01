@@ -19,11 +19,14 @@ package io.grpc.examples.wallet;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.google.common.collect.ImmutableMap;
+import io.grpc.ChannelCredentials;
+import io.grpc.Grpc;
+import io.grpc.InsecureChannelCredentials;
+import io.grpc.InsecureServerCredentials;
 import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
 import io.grpc.Server;
-import io.grpc.ServerBuilder;
+import io.grpc.ServerCredentials;
 import io.grpc.ServerInterceptors;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -39,6 +42,9 @@ import io.grpc.protobuf.services.ProtoReflectionService;
 import io.grpc.services.HealthStatusManager;
 import io.grpc.stub.MetadataUtils;
 import io.grpc.stub.StreamObserver;
+import io.grpc.xds.XdsChannelCredentials;
+import io.grpc.xds.XdsServerBuilder;
+import io.grpc.xds.XdsServerCredentials;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
@@ -49,13 +55,19 @@ import java.util.logging.Logger;
 public class WalletServer {
   private static final Logger logger = Logger.getLogger(WalletServer.class.getName());
 
+  private enum CredentialsType {
+    INSECURE,
+    XDS
+  }
   private Server server;
+  private Server healthServer;
   private int port = 18881;
   private String accountServer = "localhost:18883";
   private String statsServer = "localhost:18882";
   private String hostnameSuffix = "";
   private String gcpClientProject = "";
   private boolean v1Behavior;
+  private CredentialsType credentialsType = CredentialsType.INSECURE;
 
   private ManagedChannel accountChannel;
   private ManagedChannel statsChannel;
@@ -92,6 +104,8 @@ public class WalletServer {
         gcpClientProject = value;
       } else if ("v1_behavior".equals(key)) {
         v1Behavior = Boolean.parseBoolean(value);
+      }  else if ("creds".equals(key)) {
+        credentialsType = CredentialsType.valueOf(value.toUpperCase());
       } else {
         System.err.println("Unknown argument: " + key);
         usage = true;
@@ -114,10 +128,15 @@ public class WalletServer {
               + s.hostnameSuffix
               + "\""
               + "\n  --gcp_client_project=STR GCP project. If set, metrics and traces will be "
-              + "sent to Stackdriver. Default \"" + s.gcpClientProject + "\""
+              + "sent to Stackdriver. Default \""
+              + s.gcpClientProject
+              + "\""
               + "\n  --v1_behavior=true|false   If true, only aggregate balance is reported. "
               + "Default "
-              + s.v1Behavior);
+              + s.v1Behavior
+              + "\n  --creds=insecure|xds  . Type of credentials to use on the client & server. "
+              + "Default "
+              + s.credentialsType.toString().toLowerCase());
       System.exit(1);
     }
   }
@@ -126,11 +145,22 @@ public class WalletServer {
     if (!gcpClientProject.isEmpty()) {
       Observability.registerExporters(gcpClientProject);
     }
-    accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
-    statsChannel = ManagedChannelBuilder.forTarget(statsServer).usePlaintext().build();
+    ChannelCredentials channelCredentials =
+        credentialsType == CredentialsType.XDS
+            ? XdsChannelCredentials.create(InsecureChannelCredentials.create())
+            : InsecureChannelCredentials.create();
+    accountChannel = Grpc.newChannelBuilder(accountServer, channelCredentials).build();
+    statsChannel = Grpc.newChannelBuilder(statsServer, channelCredentials).build();
     HealthStatusManager health = new HealthStatusManager();
+    ServerCredentials serverCredentials =
+        credentialsType == CredentialsType.XDS
+            ? XdsServerCredentials.create(InsecureServerCredentials.create())
+            : InsecureServerCredentials.create();
+    // Since the main server may be using TLS, we start a second server just for plaintext health
+    // checks
+    int healthPort = port + 1;
     server =
-        ServerBuilder.forPort(port)
+        XdsServerBuilder.forPort(port, serverCredentials)
             .addService(
                 ServerInterceptors.intercept(
                     new WalletImpl(accountChannel, statsChannel, v1Behavior),
@@ -140,8 +170,14 @@ public class WalletServer {
             .addService(health.getHealthService())
             .build()
             .start();
+    healthServer =
+        XdsServerBuilder.forPort(healthPort, InsecureServerCredentials.create())
+            .addService(health.getHealthService()) // allow management servers to monitor health
+            .build()
+            .start();
     health.setStatus("", ServingStatus.SERVING);
     logger.info("Server started, listening on " + port);
+    logger.info("Plaintext Health Server started, listening on " + healthPort);
     Runtime.getRuntime()
         .addShutdownHook(
             new Thread() {
@@ -162,6 +198,9 @@ public class WalletServer {
     if (server != null) {
       server.shutdown().awaitTermination(30, SECONDS);
     }
+    if (healthServer != null) {
+      healthServer.shutdown().awaitTermination(30, SECONDS);
+    }
     if (accountChannel != null) {
       accountChannel.shutdownNow().awaitTermination(5, SECONDS);
     }
@@ -173,6 +212,9 @@ public class WalletServer {
   private void blockUntilShutdown() throws InterruptedException {
     if (server != null) {
       server.awaitTermination();
+    }
+    if (healthServer != null) {
+      healthServer.awaitTermination();
     }
   }
 
