@@ -177,7 +177,7 @@ public class WalletServer {
             .start();
     health.setStatus("", ServingStatus.SERVING);
     logger.info("Server started, listening on " + port);
-    logger.info("Plaintext Health Server started, listening on " + healthPort);
+    logger.info("Plaintext health server started, listening on " + healthPort);
     Runtime.getRuntime()
         .addShutdownHook(
             new Thread() {

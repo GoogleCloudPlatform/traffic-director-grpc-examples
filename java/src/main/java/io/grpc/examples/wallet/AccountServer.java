@@ -118,7 +118,7 @@ public class AccountServer {
     // checks
     int healthPort = port + 1;
     server =
-            XdsServerBuilder.forPort(port, serverCredentials)
+        XdsServerBuilder.forPort(port, serverCredentials)
             .addService(
                 ServerInterceptors.intercept(
                     new AccountImpl(), new WalletInterceptors.HostnameInterceptor()))
@@ -133,7 +133,7 @@ public class AccountServer {
             .start();
     health.setStatus("", ServingStatus.SERVING);
     logger.info("Server started, listening on " + port);
-    logger.info("Plaintext Health Server started, listening on " + healthPort);
+    logger.info("Plaintext health server started, listening on " + healthPort);
     Runtime.getRuntime()
         .addShutdownHook(
             new Thread() {
