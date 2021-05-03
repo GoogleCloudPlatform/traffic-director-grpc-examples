@@ -18,19 +18,20 @@ package io.grpc.examples.wallet;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
-import io.grpc.InsecureServerCredentials;
-import io.grpc.Server;
-import io.grpc.ServerCredentials;
-import io.grpc.ServerInterceptors;
-import io.grpc.services.AdminInterface;
-import io.grpc.Status;
 import io.grpc.examples.wallet.account.AccountGrpc;
 import io.grpc.examples.wallet.account.GetUserInfoRequest;
 import io.grpc.examples.wallet.account.GetUserInfoResponse;
 import io.grpc.examples.wallet.account.MembershipType;
 import io.grpc.health.v1.HealthCheckResponse.ServingStatus;
+import io.grpc.InsecureServerCredentials;
 import io.grpc.protobuf.services.ProtoReflectionService;
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
+import io.grpc.ServerCredentials;
+import io.grpc.ServerInterceptors;
+import io.grpc.services.AdminInterface;
 import io.grpc.services.HealthStatusManager;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import io.grpc.xds.XdsServerBuilder;
 import io.grpc.xds.XdsServerCredentials;
