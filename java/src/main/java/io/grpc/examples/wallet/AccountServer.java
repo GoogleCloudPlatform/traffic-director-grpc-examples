@@ -22,6 +22,7 @@ import io.grpc.InsecureServerCredentials;
 import io.grpc.Server;
 import io.grpc.ServerCredentials;
 import io.grpc.ServerInterceptors;
+import io.grpc.services.AdminInterface;
 import io.grpc.Status;
 import io.grpc.examples.wallet.account.AccountGrpc;
 import io.grpc.examples.wallet.account.GetUserInfoRequest;
@@ -46,7 +47,10 @@ public class AccountServer {
   }
   private Server server;
   private Server healthServer;
+  private Server adminServer;
+
   private int port = 18883;
+  private int adminPort = 28883;
   private String hostnameSuffix = "";
   private String gcpClientProject = "";
   private CredentialsType credentialsType = CredentialsType.INSECURE;
@@ -73,6 +77,8 @@ public class AccountServer {
       String value = parts[1];
       if ("port".equals(key)) {
         port = Integer.parseInt(value);
+      } else if ("admin_port".equals(key)) {
+        adminPort = Integer.parseInt(value);
       } else if ("hostname_suffix".equals(key)) {
         hostnameSuffix = value;
       } else if ("gcp_client_project".equals(key)) {
@@ -92,6 +98,8 @@ public class AccountServer {
               + "\n"
               + "\n  --port=PORT            The port to listen on. Default "
               + s.port
+              + "\n  --admin_port=PORT      The admin port to listen on. Default "
+              + s.adminPort
               + "\n  --hostname_suffix=STR  Suffix to append to hostname in response header. "
               + "Default \""
               + s.hostnameSuffix
@@ -109,6 +117,11 @@ public class AccountServer {
     if (!gcpClientProject.isEmpty()) {
       Observability.registerExporters(gcpClientProject);
     }
+    adminServer = ServerBuilder.forPort(adminPort)
+        .addServices(AdminInterface.getStandardServices())
+        .build()
+        .start();
+    logger.info("Admin server started, listening on " + adminPort);
     HealthStatusManager health = new HealthStatusManager();
     ServerCredentials serverCredentials =
         credentialsType == CredentialsType.XDS
@@ -156,6 +169,9 @@ public class AccountServer {
     }
     if (healthServer != null) {
       healthServer.shutdown().awaitTermination(30, SECONDS);
+    }
+    if (adminServer != null) {
+      adminServer.shutdown().awaitTermination(30, SECONDS);
     }
   }
 
