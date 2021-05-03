@@ -16,6 +16,7 @@
  *
  */
 
+#include <grpcpp/ext/admin_services.h>
 #include <grpcpp/ext/proto_server_reflection_plugin.h>
 #include <grpcpp/grpcpp.h>
 #include <grpcpp/health_check_service_interface.h>
@@ -243,6 +244,15 @@ class WalletServiceImpl final : public Wallet::Service {
       {"Bob", {{"148de9c5", 271}, {"2e7d2c03", 828}}}};
 };
 
+std::unique_ptr<Server> StartAdminServer(const std::string& port) {
+  std::string server_address = "localhost" + port;
+  std::cout << "Admin Server listening on " << server_address << std::endl;
+  ServerBuilder builder;
+  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+  grpc::AddAdminServices(&builder);
+  return builder.BuildAndStart();
+}
+
 void RunServer(const std::string& port, const std::string& account_server,
                const std::string& stats_server,
                const std::string& hostname_suffix, const bool v1_behavior) {
@@ -255,8 +265,6 @@ void RunServer(const std::string& port, const std::string& account_server,
   std::string server_address("0.0.0.0:");
   server_address += port;
   WalletServiceImpl service(hostname, v1_behavior);
-  grpc::EnableDefaultHealthCheckService(true);
-  grpc::reflection::InitProtoReflectionServerBuilderPlugin();
   // Instantiate the client stubs.  It requires a channel, out of which the
   // actual RPCs are created.  The channel models a connection to an endpoint
   // (Stats Server and Account Server in this case).  We indicate that the
@@ -268,6 +276,8 @@ void RunServer(const std::string& port, const std::string& account_server,
       account_server, grpc::InsecureChannelCredentials(), args)));
   // Listen on the given address without any authentication mechanism.
   std::cout << "Wallet server listening on " << server_address << std::endl;
+  grpc::EnableDefaultHealthCheckService(true);
+  grpc::reflection::InitProtoReflectionServerBuilderPlugin();
   ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   // Register "service" as the instance through which we'll communicate with
@@ -282,12 +292,14 @@ void RunServer(const std::string& port, const std::string& account_server,
 
 int main(int argc, char** argv) {
   std::string port = "18881";
+  std::string admin_port = "28881";
   std::string account_server = "localhost:18882";
   std::string stats_server = "localhost:18883";
   std::string hostname_suffix = "";
   bool v1_behavior = false;
   std::string gcp_client_project = "";
   std::string arg_str_port("--port");
+  std::string arg_str_admin_port("--admin_port");
   std::string arg_str_account_server("--account_server");
   std::string arg_str_stats_server("--stats_server");
   std::string arg_str_hostname_suffix("--hostname_suffix");
@@ -303,6 +315,17 @@ int main(int argc, char** argv) {
         continue;
       } else {
         std::cout << "The only correct argument syntax is --port=" << std::endl;
+        return 1;
+      }
+    }
+    start_pos = arg_val.find(arg_str_admin_port);
+    if (start_pos != std::string::npos) {
+      start_pos += arg_str_admin_port.size();
+      if (arg_val[start_pos] == '=') {
+        admin_port = arg_val.substr(start_pos + 1);
+        continue;
+      } else {
+        std::cout << "The only correct argument syntax is --admin_port=" << std::endl;
         return 1;
       }
     }
@@ -399,6 +422,7 @@ int main(int argc, char** argv) {
     opencensus::exporters::stats::StackdriverExporter::Register(
         std::move(stats_opts));
   }
+  auto admin_server = StartAdminServer(admin_port);
   RunServer(port, account_server, stats_server, hostname_suffix, v1_behavior);
   return 0;
 }

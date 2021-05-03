@@ -27,6 +27,7 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.ServerInterceptors;
+import io.grpc.services.AdminInterface;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.examples.wallet.account.AccountGrpc;
@@ -51,8 +52,10 @@ public class StatsServer {
   private static final Logger logger = Logger.getLogger(StatsServer.class.getName());
 
   private Server server;
+  private Server adminServer;
 
   private int port = 18882;
+  private int adminPort = 28882;
   private String accountServer = "localhost:18883";
   private String hostnameSuffix = "";
   private String gcpClientProject = "";
@@ -83,6 +86,8 @@ public class StatsServer {
       String value = parts[1];
       if ("port".equals(key)) {
         port = Integer.parseInt(value);
+      } else if ("admin_port".equals(key)) {
+        adminPort = Integer.parseInt(value);
       } else if ("account_server".equals(key)) {
         accountServer = value;
       } else if ("hostname_suffix".equals(key)) {
@@ -104,6 +109,8 @@ public class StatsServer {
               + "\n"
               + "\n  --port=PORT                The port to listen on. Default "
               + s.port
+              + "\n  --admin_port=PORT          The admin port to listen on. Default "
+              + s.adminPort
               + "\n  --account_server=HOST      Address of the account server. Default "
               + s.accountServer
               + "\n  --hostname_suffix=STR      Suffix to append to hostname in response header. "
@@ -123,6 +130,11 @@ public class StatsServer {
     if (!gcpClientProject.isEmpty()) {
       Observability.registerExporters(gcpClientProject);
     }
+    adminServer = ServerBuilder.forPort(adminPort)
+        .addServices(AdminInterface.getStandardServices())
+        .build()
+        .start();
+    logger.info("Admin server started, listening on " + adminPort);
     accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
     exec = MoreExecutors.listeningDecorator(Executors.newSingleThreadScheduledExecutor());
     HealthStatusManager health = new HealthStatusManager();
@@ -158,6 +170,9 @@ public class StatsServer {
   private void stop() throws InterruptedException {
     if (server != null) {
       server.shutdown().awaitTermination(30, SECONDS);
+    }
+    if (adminServer != null) {
+      adminServer.shutdown().awaitTermination(30, SECONDS);
     }
     if (accountChannel != null) {
       accountChannel.shutdownNow().awaitTermination(5, SECONDS);

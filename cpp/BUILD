@@ -11,8 +11,8 @@ cc_binary(
         "@com_github_grpc_grpc//:grpc_opencensus_plugin",
         "@io_opencensus_cpp//opencensus/exporters/stats/stackdriver:stackdriver_exporter",
         "@io_opencensus_cpp//opencensus/exporters/trace/stackdriver:stackdriver_exporter",
-        "@io_opencensus_cpp//opencensus/stats:stats",
-	      "@io_opencensus_cpp//opencensus/trace:trace",
+        "@io_opencensus_cpp//opencensus/stats",
+        "@io_opencensus_cpp//opencensus/trace",
     ],
 )
 
@@ -27,11 +27,12 @@ cc_binary(
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_grpc_grpc//:grpc++_reflection",
         "@com_github_grpc_grpc//:grpc_opencensus_plugin",
+        "@com_github_grpc_grpc//:grpcpp_admin",
         "@io_opencensus_cpp//opencensus/exporters/stats/stackdriver:stackdriver_exporter",
         "@io_opencensus_cpp//opencensus/exporters/trace/stackdriver:stackdriver_exporter",
-        "@io_opencensus_cpp//opencensus/stats:stats",
-	      "@io_opencensus_cpp//opencensus/trace:trace",
-	      "@io_opencensus_cpp//opencensus/trace:with_span",
+        "@io_opencensus_cpp//opencensus/stats",
+        "@io_opencensus_cpp//opencensus/trace",
+        "@io_opencensus_cpp//opencensus/trace:with_span",
     ],
 )
 
@@ -45,11 +46,12 @@ cc_binary(
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_grpc_grpc//:grpc++_reflection",
         "@com_github_grpc_grpc//:grpc_opencensus_plugin",
+        "@com_github_grpc_grpc//:grpcpp_admin",
         "@io_opencensus_cpp//opencensus/exporters/stats/stackdriver:stackdriver_exporter",
         "@io_opencensus_cpp//opencensus/exporters/trace/stackdriver:stackdriver_exporter",
-        "@io_opencensus_cpp//opencensus/stats:stats",
-	      "@io_opencensus_cpp//opencensus/trace:trace",
-	      "@io_opencensus_cpp//opencensus/trace:with_span",
+        "@io_opencensus_cpp//opencensus/stats",
+        "@io_opencensus_cpp//opencensus/trace",
+        "@io_opencensus_cpp//opencensus/trace:with_span",
     ],
 )
 
@@ -62,10 +64,11 @@ cc_binary(
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_grpc_grpc//:grpc++_reflection",
         "@com_github_grpc_grpc//:grpc_opencensus_plugin",
+        "@com_github_grpc_grpc//:grpcpp_admin",
         "@io_opencensus_cpp//opencensus/exporters/stats/stackdriver:stackdriver_exporter",
         "@io_opencensus_cpp//opencensus/exporters/trace/stackdriver:stackdriver_exporter",
-        "@io_opencensus_cpp//opencensus/stats:stats",
-	      "@io_opencensus_cpp//opencensus/trace:trace",
-	      "@io_opencensus_cpp//opencensus/trace:with_span",
+        "@io_opencensus_cpp//opencensus/stats",
+        "@io_opencensus_cpp//opencensus/trace",
+        "@io_opencensus_cpp//opencensus/trace:with_span",
     ],
 )

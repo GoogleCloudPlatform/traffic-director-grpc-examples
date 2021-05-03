@@ -19,14 +19,6 @@ package io.grpc.examples.wallet;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.google.common.collect.ImmutableMap;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
-import io.grpc.Metadata;
-import io.grpc.Server;
-import io.grpc.ServerBuilder;
-import io.grpc.ServerInterceptors;
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
 import io.grpc.examples.wallet.account.AccountGrpc;
 import io.grpc.examples.wallet.account.GetUserInfoRequest;
 import io.grpc.examples.wallet.account.GetUserInfoResponse;
@@ -34,23 +26,38 @@ import io.grpc.examples.wallet.account.MembershipType;
 import io.grpc.examples.wallet.stats.PriceRequest;
 import io.grpc.examples.wallet.stats.PriceResponse;
 import io.grpc.examples.wallet.stats.StatsGrpc;
+import io.grpc.Grpc;
 import io.grpc.health.v1.HealthCheckResponse.ServingStatus;
+import io.grpc.InsecureChannelCredentials;
+import io.grpc.InsecureServerCredentials;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.Metadata;
 import io.grpc.protobuf.services.ProtoReflectionService;
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
+import io.grpc.ServerCredentials;
+import io.grpc.ServerInterceptors;
+import io.grpc.services.AdminInterface;
 import io.grpc.services.HealthStatusManager;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.MetadataUtils;
 import io.grpc.stub.StreamObserver;
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.Map;
 
 /** Wallet server for the gRPC Wallet example. */
 public class WalletServer {
   private static final Logger logger = Logger.getLogger(WalletServer.class.getName());
 
   private Server server;
+  private Server adminServer;
   private int port = 18881;
+  private int adminPort = 28881;
   private String accountServer = "localhost:18883";
   private String statsServer = "localhost:18882";
   private String hostnameSuffix = "";
@@ -82,6 +89,8 @@ public class WalletServer {
       String value = parts[1];
       if ("port".equals(key)) {
         port = Integer.parseInt(value);
+      } else if ("admin_port".equals(key)) {
+        adminPort = Integer.parseInt(value);
       } else if ("account_server".equals(key)) {
         accountServer = value;
       } else if ("stats_server".equals(key)) {
@@ -105,6 +114,8 @@ public class WalletServer {
               + "\n"
               + "\n  --port=PORT                The port to listen on. Default "
               + s.port
+              + "\n  --admin_port=PORT          The admin port to listen on. Default "
+              + s.adminPort
               + "\n  --account_server=HOST      Address of the account server. Default "
               + s.accountServer
               + "\n  --stats_server=HOST        Address of the stats server. Default "
@@ -126,6 +137,11 @@ public class WalletServer {
     if (!gcpClientProject.isEmpty()) {
       Observability.registerExporters(gcpClientProject);
     }
+    adminServer = ServerBuilder.forPort(adminPort)
+        .addServices(AdminInterface.getStandardServices())
+        .build()
+        .start();
+    logger.info("Admin server started, listening on " + adminPort);
     accountChannel = ManagedChannelBuilder.forTarget(accountServer).usePlaintext().build();
     statsChannel = ManagedChannelBuilder.forTarget(statsServer).usePlaintext().build();
     HealthStatusManager health = new HealthStatusManager();
@@ -162,6 +178,15 @@ public class WalletServer {
     if (server != null) {
       server.shutdown().awaitTermination(30, SECONDS);
     }
+<<<<<<< HEAD
+=======
+    if (healthServer != null) {
+      healthServer.shutdown().awaitTermination(30, SECONDS);
+    }
+    if (adminServer != null) {
+      adminServer.shutdown().awaitTermination(30, SECONDS);
+    }
+>>>>>>> bc556d8 (Revert "Revert "Add admin server to C++/Java/Go" (#26)")
     if (accountChannel != null) {
       accountChannel.shutdownNow().awaitTermination(5, SECONDS);
     }
