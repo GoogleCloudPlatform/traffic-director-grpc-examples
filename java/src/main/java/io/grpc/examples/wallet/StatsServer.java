@@ -23,15 +23,6 @@ import com.google.common.util.concurrent.ListenableScheduledFuture;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.grpc.ChannelCredentials;
-import io.grpc.Grpc;
-import io.grpc.InsecureChannelCredentials;
-import io.grpc.InsecureServerCredentials;
-import io.grpc.ManagedChannel;
-import io.grpc.Server;
-import io.grpc.ServerCredentials;
-import io.grpc.ServerInterceptors;
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
 import io.grpc.examples.wallet.account.AccountGrpc;
 import io.grpc.examples.wallet.account.GetUserInfoRequest;
 import io.grpc.examples.wallet.account.GetUserInfoResponse;
@@ -39,9 +30,20 @@ import io.grpc.examples.wallet.account.MembershipType;
 import io.grpc.examples.wallet.stats.PriceRequest;
 import io.grpc.examples.wallet.stats.PriceResponse;
 import io.grpc.examples.wallet.stats.StatsGrpc;
+import io.grpc.Grpc;
 import io.grpc.health.v1.HealthCheckResponse.ServingStatus;
+import io.grpc.InsecureChannelCredentials;
+import io.grpc.InsecureServerCredentials;
+import io.grpc.ManagedChannel;
 import io.grpc.protobuf.services.ProtoReflectionService;
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
+import io.grpc.ServerCredentials;
+import io.grpc.ServerInterceptors;
+import io.grpc.services.AdminInterface;
 import io.grpc.services.HealthStatusManager;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 import io.grpc.xds.XdsChannelCredentials;
@@ -62,7 +64,10 @@ public class StatsServer {
   }
   private Server server;
   private Server healthServer;
+  private Server adminServer;
+
   private int port = 18882;
+  private int adminPort = 28882;
   private String accountServer = "localhost:18883";
   private String hostnameSuffix = "";
   private String gcpClientProject = "";
@@ -94,6 +99,8 @@ public class StatsServer {
       String value = parts[1];
       if ("port".equals(key)) {
         port = Integer.parseInt(value);
+      } else if ("admin_port".equals(key)) {
+        adminPort = Integer.parseInt(value);
       } else if ("account_server".equals(key)) {
         accountServer = value;
       } else if ("hostname_suffix".equals(key)) {
@@ -117,6 +124,8 @@ public class StatsServer {
               + "\n"
               + "\n  --port=PORT                The port to listen on. Default "
               + s.port
+              + "\n  --admin_port=PORT          The admin port to listen on. Default "
+              + s.adminPort
               + "\n  --account_server=HOST      Address of the account server. Default "
               + s.accountServer
               + "\n  --hostname_suffix=STR      Suffix to append to hostname in response header. "
@@ -139,6 +148,11 @@ public class StatsServer {
     if (!gcpClientProject.isEmpty()) {
       Observability.registerExporters(gcpClientProject);
     }
+    adminServer = ServerBuilder.forPort(adminPort)
+        .addServices(AdminInterface.getStandardServices())
+        .build()
+        .start();
+    logger.info("Admin server started, listening on " + adminPort);
     ChannelCredentials channelCredentials =
         credentialsType == CredentialsType.XDS
             ? XdsChannelCredentials.create(InsecureChannelCredentials.create())
@@ -194,6 +208,9 @@ public class StatsServer {
     }
     if (healthServer != null) {
       healthServer.shutdown().awaitTermination(30, SECONDS);
+    }
+    if (adminServer != null) {
+      adminServer.shutdown().awaitTermination(30, SECONDS);
     }
     if (accountChannel != null) {
       accountChannel.shutdownNow().awaitTermination(5, SECONDS);

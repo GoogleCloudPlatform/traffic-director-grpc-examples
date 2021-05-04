@@ -9,6 +9,7 @@ out
 target
 
 # Bazel
+tools/bazel-*
 bazel-bin
 bazel-examples
 bazel-genfiles
@@ -36,3 +37,6 @@ bin
 # Emacs
 *~
 \#*\#
+
+# Microsoft VS Code
+.vscode
