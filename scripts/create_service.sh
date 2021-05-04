@@ -16,6 +16,8 @@ shift 4 # Remaining arguments ($@) are passed to the server binary.
 
 # EXAMPLES_VERSION may be a branch name or a tag in the git repo.
 EXAMPLES_VERSION=${EXAMPLES_VERSION-"master"}
+# EXAMPLES_OWNER provides the ability to run the code from a forked repo.
+EXAMPLES_OWNER=${EXAMPLES_OWNER-"GoogleCloudPlatform"}
 
 size=2
 if [ "${hostname_suffix}" = "wallet-v2" ]; then
@@ -49,7 +51,7 @@ sudo apt-get update -y
 sudo apt-get install -y git
 curl -L https://storage.googleapis.com/traffic-director/td-grpc-bootstrap-0.11.0.tar.gz | tar -xz
 ./td-grpc-bootstrap-0.11.0/td-grpc-bootstrap | tee /root/td-grpc-bootstrap.json
-git clone -b ${EXAMPLES_VERSION} --single-branch --depth=1 https://github.com/GoogleCloudPlatform/traffic-director-grpc-examples.git
+git clone -b ${EXAMPLES_VERSION} --single-branch --depth=1 https://github.com/${EXAMPLES_OWNER}/traffic-director-grpc-examples.git
 ${build_script}
 sudo systemd-run -E GRPC_XDS_BOOTSTRAP=/root/td-grpc-bootstrap.json \"${server}\" --port=${port} --hostname_suffix=${hostname_suffix} $@"
 
