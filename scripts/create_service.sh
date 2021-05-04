@@ -16,6 +16,7 @@ shift 4 # Remaining arguments ($@) are passed to the server binary.
 
 # EXAMPLES_VERSION may be a branch name or a tag in the git repo.
 EXAMPLES_VERSION=${EXAMPLES_VERSION-"master"}
+# EXAMPLES_OWNER provides the ability to run the code from a forked repo.
 EXAMPLES_OWNER=${EXAMPLES_OWNER-"GoogleCloudPlatform"}
 
 size=2
