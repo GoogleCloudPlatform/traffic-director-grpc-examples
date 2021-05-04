@@ -178,15 +178,9 @@ public class WalletServer {
     if (server != null) {
       server.shutdown().awaitTermination(30, SECONDS);
     }
-<<<<<<< HEAD
-=======
-    if (healthServer != null) {
-      healthServer.shutdown().awaitTermination(30, SECONDS);
-    }
     if (adminServer != null) {
       adminServer.shutdown().awaitTermination(30, SECONDS);
     }
->>>>>>> bc556d8 (Revert "Revert "Add admin server to C++/Java/Go" (#26)")
     if (accountChannel != null) {
       accountChannel.shutdownNow().awaitTermination(5, SECONDS);
     }
