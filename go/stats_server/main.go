@@ -28,6 +28,7 @@ import (
 
 	"go.opencensus.io/plugin/ocgrpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/admin"
 	"google.golang.org/grpc/codes"
 	accountpb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/account"
 	statspb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/stats"
@@ -44,6 +45,7 @@ import (
 
 type arguments struct {
 	port                 string
+	adminPort            string
 	accountServer        string
 	hostnameSuffix       string
 	premiumOnly          bool
@@ -54,6 +56,7 @@ type arguments struct {
 func parseArguments() arguments {
 	result := arguments{}
 	flag.StringVar(&result.port, "port", "18882", "the port to listen on, default '18882'")
+	flag.StringVar(&result.adminPort, "admin_port", "28882", "the admin port to listen on, default '28882'")
 	flag.StringVar(&result.accountServer, "account_server", "localhost:18883", "address of the account service, default 'localhost:18883'")
 	flag.StringVar(&result.hostnameSuffix, "hostname_suffix", "", "suffix to append to hostname in response header for outgoing RPCs, default ''")
 	flag.BoolVar(&result.premiumOnly, "premium_only", false, "whether this service is for users with premium access only, default false")
@@ -151,6 +154,20 @@ func main() {
 	}
 	defer conn.Close()
 	c := accountpb.NewAccountClient(conn)
+
+	// Start admin server
+	adminListener, err := net.Listen("tcp", "localhost:"+args.adminPort)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	adminServer := grpc.NewServer()
+	cleanup, err := admin.Register(adminServer)
+	if err != nil {
+		log.Fatalf("failed to register admin: %v", err)
+	}
+	defer cleanup()
+	go adminServer.Serve(adminListener)
+	defer adminServer.Stop()
 
 	// Listen & serve.
 	lis, err := net.Listen("tcp", ":"+args.port)
