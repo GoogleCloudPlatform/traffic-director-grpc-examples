@@ -174,38 +174,38 @@ public class WalletServer {
     int healthPort = port + 1;
     if (credentialsType == CredentialsType.XDS) {
       server =
-              XdsServerBuilder.forPort(port, serverCredentials)
-                      .addService(
-                              ServerInterceptors.intercept(
-                                      new WalletImpl(accountChannel, statsChannel, v1Behavior),
-                                      new WalletInterceptors.HostnameInterceptor(),
-                                      new WalletInterceptors.AuthInterceptor()))
-                      .addService(ProtoReflectionService.newInstance())
-                      .addService(health.getHealthService())
-                      .build()
-                      .start();
+          XdsServerBuilder.forPort(port, serverCredentials)
+              .addService(
+                  ServerInterceptors.intercept(
+                      new WalletImpl(accountChannel, statsChannel, v1Behavior),
+                      new WalletInterceptors.HostnameInterceptor(),
+                      new WalletInterceptors.AuthInterceptor()))
+              .addService(ProtoReflectionService.newInstance())
+              .addService(health.getHealthService())
+              .build()
+              .start();
       healthServer =
-              XdsServerBuilder.forPort(healthPort, InsecureServerCredentials.create())
-                      .addService(health.getHealthService()) // allow management servers to monitor health
-                      .build()
-                      .start();
+          XdsServerBuilder.forPort(healthPort, InsecureServerCredentials.create())
+              .addService(health.getHealthService()) // allow management servers to monitor health
+              .build()
+              .start();
     } else {
       server =
-              ServerBuilder.forPort(port)
-                      .addService(
-                              ServerInterceptors.intercept(
-                                      new WalletImpl(accountChannel, statsChannel, v1Behavior),
-                                      new WalletInterceptors.HostnameInterceptor(),
-                                      new WalletInterceptors.AuthInterceptor()))
-                      .addService(ProtoReflectionService.newInstance())
-                      .addService(health.getHealthService())
-                      .build()
-                      .start();
+          ServerBuilder.forPort(port)
+              .addService(
+                  ServerInterceptors.intercept(
+                      new WalletImpl(accountChannel, statsChannel, v1Behavior),
+                      new WalletInterceptors.HostnameInterceptor(),
+                      new WalletInterceptors.AuthInterceptor()))
+              .addService(ProtoReflectionService.newInstance())
+              .addService(health.getHealthService())
+              .build()
+              .start();
       healthServer =
-              ServerBuilder.forPort(healthPort)
-                      .addService(health.getHealthService()) // allow management servers to monitor health
-                      .build()
-                      .start();
+          ServerBuilder.forPort(healthPort)
+              .addService(health.getHealthService()) // allow management servers to monitor health
+              .build()
+              .start();
     }
     health.setStatus("", ServingStatus.SERVING);
     logger.info("Server started, listening on " + port);
