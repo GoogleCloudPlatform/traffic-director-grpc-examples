@@ -16,11 +16,6 @@
  *
  */
 
-#include <grpcpp/ext/admin_services.h>
-#include <grpcpp/ext/proto_server_reflection_plugin.h>
-#include <grpcpp/grpcpp.h>
-#include <grpcpp/health_check_service_interface.h>
-#include <grpcpp/opencensus.h>
 #include <unistd.h>
 
 #include <cmath>
@@ -30,11 +25,17 @@
 #include <string>
 #include <thread>
 
+#include "grpcpp/ext/admin_services.h"
+#include "grpcpp/ext/proto_server_reflection_plugin.h"
+#include "grpcpp/grpcpp.h"
+#include "grpcpp/health_check_service_interface.h"
+#include "grpcpp/opencensus.h"
 #include "opencensus/exporters/stats/stackdriver/stackdriver_exporter.h"
 #include "opencensus/exporters/trace/stackdriver/stackdriver_exporter.h"
 #include "opencensus/trace/with_span.h"
 #include "proto/grpc/examples/wallet/account/account.grpc.pb.h"
 #include "proto/grpc/examples/wallet/stats/stats.grpc.pb.h"
+#include "utility.h"
 
 using grpc::Channel;
 using grpc::ChannelArguments;
@@ -184,7 +185,8 @@ std::unique_ptr<Server> StartAdminServer(const std::string& port) {
 }
 
 void RunServer(const std::string& port, const std::string& account_server,
-               const std::string& hostname_suffix, const bool premium_only) {
+               const std::string& hostname_suffix, const bool premium_only,
+               const std::string& creds_type) {
   char base_hostname[256];
   if (gethostname(base_hostname, 256) != 0) {
     sprintf(base_hostname, "%s-%d", "generated", rand() % 1000);
@@ -200,18 +202,21 @@ void RunServer(const std::string& port, const std::string& account_server,
   // authenticated (use of InsecureChannelCredentials()).
   ChannelArguments args;
   service.SetAccountClientStub(Account::NewStub(grpc::CreateCustomChannel(
-      account_server, grpc::InsecureChannelCredentials(), args)));
+      account_server,
+      traffic_director_grpc_examples::GetChannelCredetials(creds_type), args)));
   // Listen on the given address without any authentication mechanism.
   std::cout << "Stats Server listening on " << server_address << std::endl;
   grpc::EnableDefaultHealthCheckService(true);
   grpc::reflection::InitProtoReflectionServerBuilderPlugin();
-  ServerBuilder builder;
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+  auto builder = traffic_director_grpc_examples::GetServerBuilder(creds_type);
+  builder->AddListeningPort(
+      server_address,
+      traffic_director_grpc_examples::GetServerCredentials(creds_type));
   // Register "service" as the instance through which we'll communicate with
   // clients. In this case it corresponds to an *synchronous* service.
-  builder.RegisterService(&service);
+  builder->RegisterService(&service);
   // Finally assemble the server.
-  std::unique_ptr<Server> server(builder.BuildAndStart());
+  std::unique_ptr<Server> server(builder->BuildAndStart());
   // Wait for the server to shutdown. Note that some other thread must be
   // responsible for shutting down the server for this call to ever return.
   server->Wait();
@@ -230,6 +235,9 @@ int main(int argc, char** argv) {
   std::string arg_str_hostname_suffix("--hostname_suffix");
   std::string arg_str_premium_only("--premium_only");
   std::string arg_str_gcp_client_project("--gcp_client_project");
+  std::string creds_type =
+      traffic_director_grpc_examples::ParseCommandLineArgForCredsType(argc,
+                                                                      argv);
   for (int i = 1; i < argc; ++i) {
     std::string arg_val = argv[i];
     size_t start_pos = arg_val.find(arg_str_port);
@@ -250,7 +258,8 @@ int main(int argc, char** argv) {
         admin_port = arg_val.substr(start_pos + 1);
         continue;
       } else {
-        std::cout << "The only correct argument syntax is --admin_port=" << std::endl;
+        std::cout << "The only correct argument syntax is --admin_port="
+                  << std::endl;
         return 1;
       }
     }
@@ -317,7 +326,8 @@ int main(int argc, char** argv) {
             << ", account_server: " << account_server
             << ", hostname_suffix: " << hostname_suffix
             << ", premium_only: " << premium_only
-            << ", gcp_client_project: " << gcp_client_project << std::endl;
+            << ", gcp_client_project: " << gcp_client_project
+            << ", creds: " << creds_type << std::endl;
   if (!gcp_client_project.empty()) {
     grpc::RegisterOpenCensusPlugin();
     grpc::RegisterOpenCensusViewsForExport();
@@ -335,6 +345,6 @@ int main(int argc, char** argv) {
         std::move(stats_opts));
   }
   auto admin_server = StartAdminServer(admin_port);
-  RunServer(port, account_server, hostname_suffix, premium_only);
+  RunServer(port, account_server, hostname_suffix, premium_only, creds_type);
   return 0;
 }
