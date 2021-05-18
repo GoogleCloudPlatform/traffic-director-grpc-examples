@@ -7,24 +7,27 @@ fi
 
 cd github/traffic-director-grpc-examples
 
-pushd java
-./gradlew build
-popd
+scripts/all.sh
+scripts/cleanup.sh
 
-export GOPATH="${HOME}/gopath"
-pushd go
-pushd account_server
-go build
-popd
-pushd stats_server
-go build
-popd
-pushd wallet_client
-go build
-popd
-pushd wallet_server
-go build
-popd
-popd
+# pushd java
+# ./gradlew build
+# popd
 
-tools/bazel build cpp/...
+# export GOPATH="${HOME}/gopath"
+# pushd go
+# pushd account_server
+# go build
+# popd
+# pushd stats_server
+# go build
+# popd
+# pushd wallet_client
+# go build
+# popd
+# pushd wallet_server
+# go build
+# popd
+# popd
+
+# tools/bazel build cpp/...
