@@ -16,20 +16,21 @@
  *
  */
 
-#include <grpcpp/ext/proto_server_reflection_plugin.h>
-#include <grpcpp/grpcpp.h>
-#include <grpcpp/health_check_service_interface.h>
-#include <grpcpp/opencensus.h>
 #include <unistd.h>
 
 #include <iostream>
 #include <memory>
 #include <string>
 
+#include "grpcpp/ext/proto_server_reflection_plugin.h"
+#include "grpcpp/grpcpp.h"
+#include "grpcpp/health_check_service_interface.h"
+#include "grpcpp/opencensus.h"
 #include "opencensus/exporters/stats/stackdriver/stackdriver_exporter.h"
 #include "opencensus/exporters/trace/stackdriver/stackdriver_exporter.h"
 #include "opencensus/trace/with_span.h"
 #include "proto/grpc/examples/wallet/account/account.grpc.pb.h"
+#include "utility.h"
 
 using grpc::Server;
 using grpc::ServerBuilder;
@@ -75,7 +76,8 @@ class AccountServiceImpl final : public Account::Service {
   std::string hostname_;
 };
 
-void RunServer(const std::string& port, const std::string& hostname_suffix) {
+void RunServer(const std::string& port, const std::string& hostname_suffix,
+               const std::string& creds_type) {
   std::string hostname;
   char base_hostname[256];
   if (gethostname(base_hostname, 256) != 0) {
@@ -90,13 +92,15 @@ void RunServer(const std::string& port, const std::string& hostname_suffix) {
   grpc::reflection::InitProtoReflectionServerBuilderPlugin();
   // Listen on the given address without any authentication mechanism.
   std::cout << "Account Server listening on " << server_address << std::endl;
-  ServerBuilder builder;
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+  auto builder = traffic_director_grpc_examples::GetServerBuilder(creds_type);
+  builder->AddListeningPort(
+      server_address,
+      traffic_director_grpc_examples::GetServerCredentials(creds_type));
   // Register "service" as the instance through which we'll communicate with
   // clients. In this case it corresponds to an *synchronous* service.
-  builder.RegisterService(&service);
+  builder->RegisterService(&service);
   // Finally assemble the server.
-  std::unique_ptr<Server> server(builder.BuildAndStart());
+  std::unique_ptr<Server> server(builder->BuildAndStart());
   // Wait for the server to shutdown. Note that some other thread must be
   // responsible for shutting down the server for this call to ever return.
   server->Wait();
@@ -109,6 +113,9 @@ int main(int argc, char** argv) {
   std::string arg_str_port("--port");
   std::string arg_str_hostname_suffix("--hostname_suffix");
   std::string arg_str_gcp_client_project("--gcp_client_project");
+  std::string creds_type =
+      traffic_director_grpc_examples::ParseCommandLineArgForCredsType(argc,
+                                                                      argv);
   for (int i = 1; i < argc; ++i) {
     std::string arg_val = argv[i];
     size_t start_pos = arg_val.find(arg_str_port);
@@ -149,7 +156,8 @@ int main(int argc, char** argv) {
   }
   std::cout << "Account Server arguments: port: " << port
             << ", hostname_suffix: " << hostname_suffix
-            << ", gcp_client_project: " << gcp_client_project << std::endl;
+            << ", gcp_client_project: " << gcp_client_project
+            << ", creds: " << creds_type << std::endl;
   if (!gcp_client_project.empty()) {
     grpc::RegisterOpenCensusPlugin();
     grpc::RegisterOpenCensusViewsForExport();
@@ -166,6 +174,6 @@ int main(int argc, char** argv) {
     opencensus::exporters::stats::StackdriverExporter::Register(
         std::move(stats_opts));
   }
-  RunServer(port, hostname_suffix);
+  RunServer(port, hostname_suffix, creds_type);
   return 0;
 }

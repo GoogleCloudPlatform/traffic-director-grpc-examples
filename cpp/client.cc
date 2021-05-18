@@ -16,8 +16,6 @@
  *
  */
 
-#include <grpc++/grpc++.h>
-#include <grpcpp/opencensus.h>
 #include <unistd.h>
 
 #include <iostream>
@@ -25,10 +23,13 @@
 #include <string>
 #include <thread>
 
+#include "grpc++/grpc++.h"
+#include "grpcpp/opencensus.h"
 #include "opencensus/exporters/stats/stackdriver/stackdriver_exporter.h"
 #include "opencensus/exporters/trace/stackdriver/stackdriver_exporter.h"
 #include "proto/grpc/examples/wallet/stats/stats.grpc.pb.h"
 #include "proto/grpc/examples/wallet/wallet.grpc.pb.h"
+#include "utility.h"
 
 using grpc::Channel;
 using grpc::ChannelArguments;
@@ -234,6 +235,9 @@ int main(int argc, char** argv) {
   std::string arg_str_unary_watch("--unary_watch");
   std::string arg_str_gcp_client_project("--gcp_client_project");
   std::string arg_str_route("--route");
+  std::string creds_type =
+      traffic_director_grpc_examples::ParseCommandLineArgForCredsType(argc,
+                                                                      argv);
   for (int i = 1; i < argc; ++i) {
     std::string arg_val = argv[i];
     size_t start_pos = arg_val.find(arg_command_balance);
@@ -344,9 +348,8 @@ int main(int argc, char** argv) {
         gcp_client_project = arg_val.substr(start_pos + 1);
         continue;
       } else {
-        std::cout
-            << "The only correct argument syntax is --gcp_client_project="
-            << std::endl;
+        std::cout << "The only correct argument syntax is --gcp_client_project="
+                  << std::endl;
         return 1;
       }
     }
@@ -358,19 +361,18 @@ int main(int argc, char** argv) {
         route = arg_val.substr(start_pos + 1);
         continue;
       } else {
-        std::cout << "The only correct argument syntax is --route=" << std::endl;
+        std::cout << "The only correct argument syntax is --route="
+                  << std::endl;
         return 1;
       }
     }
-
   }
   std::cout << "Client arguments: command: " << command
             << ", wallet_server: " << wallet_server
             << ", stats_server: " << stats_server << ", user: " << user
             << ", watch: " << watch << " ,unary_watch: " << unary_watch
             << ", gcp_client_project: " << gcp_client_project
-            << ", route: " << route
-            << std::endl;
+            << ", route: " << route << ", creds: " << creds_type << std::endl;
 
   if (!gcp_client_project.empty()) {
     grpc::RegisterOpenCensusPlugin();
@@ -396,7 +398,9 @@ int main(int argc, char** argv) {
   ChannelArguments args;
   if (command == "price") {
     StatsClient stats(grpc::CreateCustomChannel(
-        stats_server, grpc::InsecureChannelCredentials(), args));
+        stats_server,
+        traffic_director_grpc_examples::GetChannelCredetials(creds_type),
+        args));
     if (watch) {
       stats.WatchPrice(user, route);
     } else {
@@ -404,7 +408,9 @@ int main(int argc, char** argv) {
     }
   } else {
     WalletClient wallet(grpc::CreateCustomChannel(
-        wallet_server, grpc::InsecureChannelCredentials(), args));
+        wallet_server,
+        traffic_director_grpc_examples::GetChannelCredetials(creds_type),
+        args));
     if (watch) {
       wallet.WatchBalance(user, route);
     } else {

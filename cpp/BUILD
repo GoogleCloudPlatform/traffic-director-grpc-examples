@@ -1,10 +1,24 @@
 package(default_visibility = ["//visibility:public"])
 
+cc_library(
+    name = "utility",
+    srcs = [
+        "utility.cc",
+        "utility.h",
+    ],
+    defines = ["BAZEL_BUILD"],
+    deps = [
+        "@com_github_grpc_grpc//:grpc++",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
 cc_binary(
     name = "client",
     srcs = ["client.cc"],
     defines = ["BAZEL_BUILD"],
     deps = [
+        ":utility",
         "//:stats_proto",
         "//:wallet_proto",
         "@com_github_grpc_grpc//:grpc++",
@@ -21,6 +35,7 @@ cc_binary(
     srcs = ["wallet_server.cc"],
     defines = ["BAZEL_BUILD"],
     deps = [
+        ":utility",
         "//:account_proto",
         "//:stats_proto",
         "//:wallet_proto",
@@ -41,6 +56,7 @@ cc_binary(
     srcs = ["stats_server.cc"],
     defines = ["BAZEL_BUILD"],
     deps = [
+        ":utility",
         "//:account_proto",
         "//:stats_proto",
         "@com_github_grpc_grpc//:grpc++",
@@ -60,6 +76,7 @@ cc_binary(
     srcs = ["account_server.cc"],
     defines = ["BAZEL_BUILD"],
     deps = [
+        ":utility",
         "//:account_proto",
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_grpc_grpc//:grpc++_reflection",
