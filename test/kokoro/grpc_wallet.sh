@@ -7,7 +7,7 @@ fi
 
 cd github/traffic-director-grpc-examples
 
-scripts/all.sh
+scripts/all.sh go
 scripts/cleanup.sh
 
 # pushd java
