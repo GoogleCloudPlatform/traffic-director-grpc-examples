@@ -5,10 +5,10 @@ if [[ -f /VERSION ]]; then
   cat /VERSION
 fi
 
-cd github/traffic-director-grpc-examples
+cd github/traffic-director-grpc-examples/scripts
 
-scripts/all.sh go
-scripts/cleanup.sh
+./all.sh go
+./cleanup.sh
 
 # pushd java
 # ./gradlew build
