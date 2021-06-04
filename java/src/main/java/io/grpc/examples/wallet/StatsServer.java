@@ -63,7 +63,6 @@ public class StatsServer {
     XDS
   }
   private Server server;
-  private Server healthServer;
   private Server adminServer;
 
   private int port = 18882;
@@ -148,25 +147,24 @@ public class StatsServer {
     if (!gcpClientProject.isEmpty()) {
       Observability.registerExporters(gcpClientProject);
     }
+    HealthStatusManager health = new HealthStatusManager();
+    // start an admin+health server in plaintext mode
     adminServer = ServerBuilder.forPort(adminPort)
         .addServices(AdminInterface.getStandardServices())
+        .addService(health.getHealthService())
         .build()
         .start();
-    logger.info("Admin server started, listening on " + adminPort);
+    logger.info("Admin & health server started, listening on " + adminPort);
     ChannelCredentials channelCredentials =
         credentialsType == CredentialsType.XDS
             ? XdsChannelCredentials.create(InsecureChannelCredentials.create())
             : InsecureChannelCredentials.create();
     accountChannel = Grpc.newChannelBuilder(accountServer, channelCredentials).build();
     exec = MoreExecutors.listeningDecorator(Executors.newSingleThreadScheduledExecutor());
-    HealthStatusManager health = new HealthStatusManager();
     ServerCredentials serverCredentials =
         credentialsType == CredentialsType.XDS
             ? XdsServerCredentials.create(InsecureServerCredentials.create())
             : InsecureServerCredentials.create();
-    // Since the main server may be using TLS, we start a second server just for plaintext health
-    // checks
-    int healthPort = port + 1;
     if (credentialsType == CredentialsType.XDS) {
       server =
           XdsServerBuilder.forPort(port, serverCredentials)
@@ -177,11 +175,6 @@ public class StatsServer {
                       new WalletInterceptors.AuthInterceptor()))
               .addService(ProtoReflectionService.newInstance())
               .addService(health.getHealthService())
-              .build()
-              .start();
-      healthServer =
-          XdsServerBuilder.forPort(healthPort, InsecureServerCredentials.create())
-              .addService(health.getHealthService()) // allow management servers to monitor health
               .build()
               .start();
     } else {
@@ -196,15 +189,9 @@ public class StatsServer {
               .addService(health.getHealthService())
               .build()
               .start();
-      healthServer =
-          ServerBuilder.forPort(healthPort)
-              .addService(health.getHealthService()) // allow management servers to monitor health
-              .build()
-              .start();
     }
     health.setStatus("", ServingStatus.SERVING);
     logger.info("Server started, listening on " + port);
-    logger.info("Plaintext health server started, listening on " + healthPort);
     Runtime.getRuntime()
         .addShutdownHook(
             new Thread() {
@@ -225,9 +212,6 @@ public class StatsServer {
     if (server != null) {
       server.shutdown().awaitTermination(30, SECONDS);
     }
-    if (healthServer != null) {
-      healthServer.shutdown().awaitTermination(30, SECONDS);
-    }
     if (adminServer != null) {
       adminServer.shutdown().awaitTermination(30, SECONDS);
     }
@@ -242,9 +226,6 @@ public class StatsServer {
   private void blockUntilShutdown() throws InterruptedException {
     if (server != null) {
       server.awaitTermination();
-    }
-    if (healthServer != null) {
-      healthServer.awaitTermination();
     }
   }
 
