@@ -27,6 +27,8 @@ import (
 	"go.opencensus.io/plugin/ocgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
+	xdscreds "google.golang.org/grpc/credentials/xds"
 	accountpb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/account"
 	"google.golang.org/grpc/grpc-wallet/observability"
 	"google.golang.org/grpc/grpc-wallet/utility"
@@ -35,8 +37,15 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/xds"
+)
 
-	_ "google.golang.org/grpc/xds" // To enable xds support.
+var (
+	port             = flag.String("port", "18883", "the port to listen on, default '18883'")
+	adminPort        = flag.String("admin_port", "28883", "the port to listen on, for admin services like CSDS, health, channelz etc, default '28883'")
+	hostnameSuffix   = flag.String("hostname_suffix", "", "suffix to append to hostname in response header for outgoing RPCs, default ''")
+	gcpClientProject = flag.String("gcp_client_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
+	creds            = flag.String("creds", "insecure", "type of transport credentials to use. Supported values include 'xds' and 'insecure', defaults to 'insecure'")
 )
 
 type user struct {
@@ -49,27 +58,14 @@ var users = map[string]user{
 	"81b637d8": {"Bob", accountpb.MembershipType_NORMAL},
 }
 
-type arguments struct {
-	port                 string
-	hostnameSuffix       string
-	gcpClientProject string
-}
-
-// parseArguments parses the command line arguments using the flag package.
-func parseArguments() arguments {
-	result := arguments{}
-	flag.StringVar(&result.port, "port", "18883", "the port to listen on, default '18883'")
-	flag.StringVar(&result.hostnameSuffix, "hostname_suffix", "", "suffix to append to hostname in response header for outgoing RPCs, default ''")
-	flag.StringVar(&result.gcpClientProject, "gcp_client_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
-	flag.Parse()
-	return result
-}
-
+// server provides an implementation of the Account service as defined in
+// proto/grpc/examples/wallet/account/account.proto.
 type server struct {
 	accountpb.UnimplementedAccountServer
 	hostname string
 }
 
+// GetUserInfo implements the GetUserInfo method from the Account service.
 func (s *server) GetUserInfo(ctx context.Context, req *accountpb.GetUserInfoRequest) (*accountpb.GetUserInfoResponse, error) {
 	// Get the user matching the request's token.
 	usr, ok := users[req.Token]
@@ -86,28 +82,83 @@ func (s *server) GetUserInfo(ctx context.Context, req *accountpb.GetUserInfoRequ
 	return &accountpb.GetUserInfoResponse{Name: usr.name, Membership: usr.membership}, nil
 }
 
-func main() {
-	args := parseArguments()
+// grpcServer wraps methods that are invoked on a vanilla gRPC server or an
+// xds-enabled gRPC server.
+type grpcServer interface {
+	grpc.ServiceRegistrar
+	reflection.GRPCServer
+	Serve(net.Listener) error
+}
 
-	var serverOpts []grpc.ServerOption
-	if args.gcpClientProject != "" {
-		sd := observability.ConfigureStackdriver(args.gcpClientProject)
+func main() {
+	flag.Parse()
+
+	// Parse credentials type from the command line to determine if xDS
+	// credentials are to be used.
+	xdsCreds, err := utility.ParseCredentialsType(*creds)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Using xDS credentials:", xdsCreds)
+
+	// Use insecure credentials by default. But if xDS credentials are specified
+	// on the command line, use xDS credentials with an insecure fallback.
+	serverCreds := insecure.NewCredentials()
+	if xdsCreds {
+		var err error
+		serverCreds, err = xdscreds.NewServerCredentials(xdscreds.ServerOptions{FallbackCreds: insecure.NewCredentials()})
+		if err != nil {
+			log.Fatalf("Failed to create server xDS credentials: %v", err)
+		}
+	}
+	serverOpts := []grpc.ServerOption{grpc.Creds(serverCreds)}
+
+	// Export stats to Stackdriver if a GCP project was specified.
+	if *gcpClientProject != "" {
+		sd := observability.ConfigureStackdriver(*gcpClientProject)
 		defer sd.Flush()
 		defer sd.StopMetricsExporter()
 		serverOpts = append(serverOpts, grpc.StatsHandler(&ocgrpc.ServerHandler{}))
 	}
 
-	lis, err := net.Listen("tcp", ":"+args.port)
+	// Create a listener to serve Account service RPCs on -port.
+	accountListener, err := net.Listen("tcp4", ":"+*port)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		log.Fatalf("Failed to listen: %v", err)
 	}
-	s := grpc.NewServer(serverOpts...)
-	accountpb.RegisterAccountServer(s, &server{hostname: utility.GenHostname(args.hostnameSuffix)})
-	reflection.Register(s)
+
+	// Create the Account service implementation.
+	accountServer := &server{hostname: utility.GenHostname(*hostnameSuffix)}
+
+	// Start serving Account service on -port. We use an xDS-enabled gRPC server
+	// when xDS credentials are to be used, and a vanilla gRPC server otherwise.
+	var s grpcServer
+	if xdsCreds {
+		s = xds.NewGRPCServer(serverOpts...)
+	} else {
+		s = grpc.NewServer(serverOpts...)
+	}
+	accountpb.RegisterAccountServer(s, accountServer)
+
+	// Also export the gRPC health check service on the same port as that of the
+	// Wallet service. This will make it easier to configure GCP health checks
+	// with the --use-serving-port flag.
+	//
+	// Note that the GCP health check will not work if an xds-enabled gRPC server
+	// is used in mTLS mode. In this case, the health check on the -admin_port can
+	// be used.
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(s, healthServer)
-	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+	reflection.Register(s)
+	go func() {
+		if err := s.Serve(accountListener); err != nil {
+			log.Fatalf("Failed to serve Account service: %v", err)
+		}
+	}()
+
+	// Expose admin services (csds, health and reflection) on -admin_port.
+	if err := utility.StartAdminServices(*adminPort); err != nil {
+		log.Fatalf("StartAdminServices(%s) failed: %v", *adminPort, err)
 	}
 }
