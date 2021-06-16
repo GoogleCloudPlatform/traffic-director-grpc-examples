@@ -30,6 +30,7 @@ import io.grpc.examples.wallet.account.GetUserInfoResponse;
 import io.grpc.examples.wallet.account.MembershipType;
 import io.grpc.health.v1.HealthCheckResponse.ServingStatus;
 import io.grpc.protobuf.services.ProtoReflectionService;
+import io.grpc.services.AdminInterface;
 import io.grpc.services.HealthStatusManager;
 import io.grpc.stub.StreamObserver;
 import io.grpc.xds.XdsServerBuilder;
@@ -46,8 +47,9 @@ public class AccountServer {
     XDS
   }
   private Server server;
-  private Server healthServer;
+  private Server adminServer;
   private int port = 18883;
+  private int adminPort = 28883;
   private String hostnameSuffix = "";
   private String gcpClientProject = "";
   private CredentialsType credentialsType = CredentialsType.INSECURE;
@@ -74,6 +76,8 @@ public class AccountServer {
       String value = parts[1];
       if ("port".equals(key)) {
         port = Integer.parseInt(value);
+      } else if ("admin_port".equals(key)) {
+        adminPort = Integer.parseInt(value);
       } else if ("hostname_suffix".equals(key)) {
         hostnameSuffix = value;
       } else if ("gcp_client_project".equals(key)) {
@@ -93,6 +97,8 @@ public class AccountServer {
               + "\n"
               + "\n  --port=PORT            The port to listen on. Default "
               + s.port
+              + "\n  --admin_port=PORT          The admin port to listen on. Default "
+              + s.adminPort
               + "\n  --hostname_suffix=STR  Suffix to append to hostname in response header. "
               + "Default \""
               + s.hostnameSuffix
@@ -111,13 +117,18 @@ public class AccountServer {
       Observability.registerExporters(gcpClientProject);
     }
     HealthStatusManager health = new HealthStatusManager();
+    // start an admin+health server in plaintext mode
+    adminServer =
+        ServerBuilder.forPort(adminPort)
+            .addServices(AdminInterface.getStandardServices())
+            .addService(health.getHealthService())
+            .build()
+            .start();
+    logger.info("Admin & health server started, listening on " + adminPort);
     ServerCredentials serverCredentials =
         credentialsType == CredentialsType.XDS
             ? XdsServerCredentials.create(InsecureServerCredentials.create())
             : InsecureServerCredentials.create();
-    // Since the main server may be using TLS, we start a second server just for plaintext health
-    // checks
-    int healthPort = port + 1;
     if (credentialsType == CredentialsType.XDS) {
       server =
           XdsServerBuilder.forPort(port, serverCredentials)
@@ -126,11 +137,6 @@ public class AccountServer {
                       new AccountImpl(), new WalletInterceptors.HostnameInterceptor()))
               .addService(ProtoReflectionService.newInstance())
               .addService(health.getHealthService())
-              .build()
-              .start();
-      healthServer =
-          XdsServerBuilder.forPort(healthPort, InsecureServerCredentials.create())
-              .addService(health.getHealthService()) // allow management servers to monitor health
               .build()
               .start();
     } else {
@@ -143,15 +149,9 @@ public class AccountServer {
               .addService(health.getHealthService())
               .build()
               .start();
-      healthServer =
-          ServerBuilder.forPort(healthPort)
-              .addService(health.getHealthService()) // allow management servers to monitor health
-              .build()
-              .start();
     }
     health.setStatus("", ServingStatus.SERVING);
     logger.info("Server started, listening on " + port);
-    logger.info("Plaintext health server started, listening on " + healthPort);
     Runtime.getRuntime()
         .addShutdownHook(
             new Thread() {
@@ -172,17 +172,14 @@ public class AccountServer {
     if (server != null) {
       server.shutdown().awaitTermination(30, SECONDS);
     }
-    if (healthServer != null) {
-      healthServer.shutdown().awaitTermination(30, SECONDS);
+    if (adminServer != null) {
+      adminServer.shutdown().awaitTermination(30, SECONDS);
     }
   }
 
   private void blockUntilShutdown() throws InterruptedException {
     if (server != null) {
       server.awaitTermination();
-    }
-    if (healthServer != null) {
-      healthServer.awaitTermination();
     }
   }
 
