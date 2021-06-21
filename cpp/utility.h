@@ -19,6 +19,7 @@
 #include <memory>
 
 #include "absl/strings/string_view.h"
+#include "grpcpp/grpcpp.h"
 #include "grpcpp/security/credentials.h"
 #include "grpcpp/security/server_credentials.h"
 
@@ -41,5 +42,9 @@ std::unique_ptr<grpc::ServerBuilder> GetServerBuilder(
 
 std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
     absl::string_view creds_type);
+
+// Starts admin server on port \a port using insecure credentials.
+// This server also exposes a health-check service on the same port.
+std::unique_ptr<grpc::Server> StartAdminServer(const std::string& port);
 
 }  // namespace traffic_director_grpc_examples

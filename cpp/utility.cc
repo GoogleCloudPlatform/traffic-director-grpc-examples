@@ -22,6 +22,7 @@
 #include <iostream>
 
 #include "absl/memory/memory.h"
+#include "grpcpp/ext/admin_services.h"
 #include "grpcpp/xds_server_builder.h"
 
 namespace traffic_director_grpc_examples {
@@ -85,6 +86,16 @@ std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
         grpc::InsecureServerCredentials());
   }
   assert(0);
+}
+
+std::unique_ptr<grpc::Server> StartAdminServer(const std::string& port) {
+  std::string server_address = "localhost" + port;
+  grpc::EnableDefaultHealthCheckService(true);
+  grpc::ServerBuilder builder;
+  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
+  grpc::AddAdminServices(&builder);
+  return builder.BuildAndStart();
+  std::cout << "Admin Server listening on " << server_address << std::endl;
 }
 
 }  // namespace traffic_director_grpc_examples

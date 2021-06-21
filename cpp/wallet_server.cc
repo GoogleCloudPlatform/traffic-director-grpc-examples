@@ -22,7 +22,6 @@
 #include <memory>
 #include <string>
 
-#include "grpcpp/ext/admin_services.h"
 #include "grpcpp/ext/proto_server_reflection_plugin.h"
 #include "grpcpp/grpcpp.h"
 #include "grpcpp/health_check_service_interface.h"
@@ -245,15 +244,6 @@ class WalletServiceImpl final : public Wallet::Service {
       {"Bob", {{"148de9c5", 271}, {"2e7d2c03", 828}}}};
 };
 
-std::unique_ptr<Server> StartAdminServer(const std::string& port) {
-  std::string server_address = "localhost" + port;
-  std::cout << "Admin Server listening on " << server_address << std::endl;
-  ServerBuilder builder;
-  builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
-  grpc::AddAdminServices(&builder);
-  return builder.BuildAndStart();
-}
-
 void RunServer(const std::string& port, const std::string& account_server,
                const std::string& stats_server,
                const std::string& hostname_suffix, const bool v1_behavior,
@@ -433,7 +423,8 @@ int main(int argc, char** argv) {
     opencensus::exporters::stats::StackdriverExporter::Register(
         std::move(stats_opts));
   }
-  auto admin_server = StartAdminServer(admin_port);
+  auto admin_server =
+      traffic_director_grpc_examples::StartAdminServer(admin_port);
   RunServer(port, account_server, stats_server, hostname_suffix, v1_behavior,
             creds_type);
   return 0;
