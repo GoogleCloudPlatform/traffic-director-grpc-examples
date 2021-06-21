@@ -94,8 +94,9 @@ std::unique_ptr<grpc::Server> StartAdminServer(const std::string& port) {
   grpc::ServerBuilder builder;
   builder.AddListeningPort(server_address, grpc::InsecureServerCredentials());
   grpc::AddAdminServices(&builder);
+  std::cout << "Admin and Health Check Server listening on " << server_address
+            << std::endl;
   return builder.BuildAndStart();
-  std::cout << "Admin Server listening on " << server_address << std::endl;
 }
 
 }  // namespace traffic_director_grpc_examples

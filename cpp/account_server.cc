@@ -76,8 +76,7 @@ class AccountServiceImpl final : public Account::Service {
   std::string hostname_;
 };
 
-void RunServer(const std::string& port, const std::string& admin_port,
-               const std::string& hostname_suffix,
+void RunServer(const std::string& port, const std::string& hostname_suffix,
                const std::string& creds_type) {
   std::string hostname;
   char base_hostname[256];
@@ -192,6 +191,6 @@ int main(int argc, char** argv) {
   }
   auto admin_server =
       traffic_director_grpc_examples::StartAdminServer(admin_port);
-  RunServer(port, admin_port, hostname_suffix, creds_type);
+  RunServer(port, hostname_suffix, creds_type);
   return 0;
 }
