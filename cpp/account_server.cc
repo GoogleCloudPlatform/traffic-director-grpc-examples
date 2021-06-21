@@ -108,9 +108,11 @@ void RunServer(const std::string& port, const std::string& hostname_suffix,
 
 int main(int argc, char** argv) {
   std::string port = "18883";
+  std::string admin_port = "28883";
   std::string hostname_suffix = "";
   std::string gcp_client_project = "";
   std::string arg_str_port("--port");
+  std::string arg_str_admin_port("--admin_port");
   std::string arg_str_hostname_suffix("--hostname_suffix");
   std::string arg_str_gcp_client_project("--gcp_client_project");
   std::string creds_type =
@@ -126,6 +128,18 @@ int main(int argc, char** argv) {
         continue;
       } else {
         std::cout << "The only correct argument syntax is --port=" << std::endl;
+        return 1;
+      }
+    }
+    start_pos = arg_val.find(arg_str_admin_port);
+    if (start_pos != std::string::npos) {
+      start_pos += arg_str_admin_port.size();
+      if (arg_val[start_pos] == '=') {
+        admin_port = arg_val.substr(start_pos + 1);
+        continue;
+      } else {
+        std::cout << "The only correct argument syntax is --admin_port="
+                  << std::endl;
         return 1;
       }
     }
@@ -155,6 +169,7 @@ int main(int argc, char** argv) {
     }
   }
   std::cout << "Account Server arguments: port: " << port
+            << ", admin port: " << admin_port
             << ", hostname_suffix: " << hostname_suffix
             << ", gcp_client_project: " << gcp_client_project
             << ", creds: " << creds_type << std::endl;
@@ -174,6 +189,8 @@ int main(int argc, char** argv) {
     opencensus::exporters::stats::StackdriverExporter::Register(
         std::move(stats_opts));
   }
+  auto admin_server =
+      traffic_director_grpc_examples::StartAdminServer(admin_port);
   RunServer(port, hostname_suffix, creds_type);
   return 0;
 }

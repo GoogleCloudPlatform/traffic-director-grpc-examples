@@ -9,6 +9,7 @@ cc_library(
     defines = ["BAZEL_BUILD"],
     deps = [
         "@com_github_grpc_grpc//:grpc++",
+        "@com_github_grpc_grpc//:grpcpp_admin",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -42,7 +43,6 @@ cc_binary(
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_grpc_grpc//:grpc++_reflection",
         "@com_github_grpc_grpc//:grpc_opencensus_plugin",
-        "@com_github_grpc_grpc//:grpcpp_admin",
         "@io_opencensus_cpp//opencensus/exporters/stats/stackdriver:stackdriver_exporter",
         "@io_opencensus_cpp//opencensus/exporters/trace/stackdriver:stackdriver_exporter",
         "@io_opencensus_cpp//opencensus/stats",
@@ -62,7 +62,6 @@ cc_binary(
         "@com_github_grpc_grpc//:grpc++",
         "@com_github_grpc_grpc//:grpc++_reflection",
         "@com_github_grpc_grpc//:grpc_opencensus_plugin",
-        "@com_github_grpc_grpc//:grpcpp_admin",
         "@io_opencensus_cpp//opencensus/exporters/stats/stackdriver:stackdriver_exporter",
         "@io_opencensus_cpp//opencensus/exporters/trace/stackdriver:stackdriver_exporter",
         "@io_opencensus_cpp//opencensus/stats",
