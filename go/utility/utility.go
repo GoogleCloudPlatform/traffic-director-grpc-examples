@@ -20,16 +20,22 @@ package utility
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/rand"
+	"net"
 	"os"
 	"strconv"
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/admin"
 	"google.golang.org/grpc/codes"
 	accountpb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/account"
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 )
 
@@ -115,4 +121,44 @@ func ValidateMembership(inCtx context.Context, accountClient accountpb.AccountCl
 		return false, "", "", "", status.Error(codes.Unauthenticated, "requested membership higher than actual membership")
 	}
 	return requestedMembership != "normal", name, token, requestedMembership, nil
+}
+
+// ParseCredentialsType parses the value set for the command line flag -creds.
+// Supported values for this flag include 'insecure' and 'xds'. When a nil error
+// is returned, the first return value indicates whether xDS credentials are to
+// be used. A non-nil error is returned when credsType is set to an unsupported
+// credentials type.
+func ParseCredentialsType(credsType string) (bool, error) {
+	switch credsType {
+	case "insecure":
+		return false, nil
+	case "xds":
+		return true, nil
+	default:
+		return false, fmt.Errorf("-creds set to unsupported value %q. Only supported values are 'insecure' and 'xds'", credsType)
+	}
+}
+
+// StartAdminServices exposes admin services (csds, health and reflection) on
+// the on admin_port. It is a blocking call and will return only when the gRPC
+// server exposing the admin services is stopped.
+func StartAdminServices(adminPort string) error {
+	adminListener, err := net.Listen("tcp", ":"+adminPort)
+	if err != nil {
+		return fmt.Errorf("failed to listen: %v", err)
+	}
+	s := grpc.NewServer()
+	cleanup, err := admin.Register(s)
+	if err != nil {
+		return fmt.Errorf("failed to register admin service: %v", err)
+	}
+	defer cleanup()
+	reflection.Register(s)
+	healthServer := health.NewServer()
+	healthServer.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
+	healthpb.RegisterHealthServer(s, healthServer)
+	if err := s.Serve(adminListener); err != nil {
+		return fmt.Errorf("failed to serve admin services: %v", err)
+	}
+	return nil
 }

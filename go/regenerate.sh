@@ -25,13 +25,13 @@ function finish {
 }
 trap finish EXIT
 
-go install github.com/golang/protobuf/protoc-gen-go
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 mkdir -p ${WORKDIR}/out
 
 SOURCES=$(git ls-files --exclude-standard --cached --others "../*.proto")
 for src in ${SOURCES[@]}; do
-  protoc --go_out=plugins=grpc:${WORKDIR}/out \
+  protoc --go_out=${WORKDIR}/out --go-grpc_out=${WORKDIR}/out \
     -I"."\
     -I".."\
     ${src}
