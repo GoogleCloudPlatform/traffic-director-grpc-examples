@@ -85,7 +85,6 @@ public class Client {
             ? XdsChannelCredentials.create(InsecureChannelCredentials.create())
             : InsecureChannelCredentials.create();
 
-    Grpc.newChannelBuilder(target, channelCredentials).build();
     ManagedChannel managedChannel = Grpc.newChannelBuilder(target, channelCredentials).build();
     Metadata headers = new Metadata();
     if ("Alice".equals(user)) {
