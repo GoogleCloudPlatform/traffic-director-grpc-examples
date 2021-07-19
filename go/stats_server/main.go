@@ -38,6 +38,7 @@ import (
 	"google.golang.org/grpc/health"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/xds"
 )
@@ -130,6 +131,7 @@ func (s *server) WatchPrice(req *statspb.PriceRequest, srv statspb.Stats_WatchPr
 // xds-enabled gRPC server.
 type grpcServer interface {
 	grpc.ServiceRegistrar
+	reflection.GRPCServer
 	Serve(net.Listener) error
 }
 
@@ -214,6 +216,7 @@ func main() {
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
 	healthpb.RegisterHealthServer(s, healthServer)
+	reflection.Register(s)
 	go func() {
 		if err := s.Serve(statsListener); err != nil {
 			log.Fatalf("Failed to serve Stats service: %v", err)
