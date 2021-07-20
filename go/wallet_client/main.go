@@ -29,6 +29,8 @@ import (
 
 	"go.opencensus.io/plugin/ocgrpc"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+	xdscreds "google.golang.org/grpc/credentials/xds"
 	walletpb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet"
 	statspb "google.golang.org/grpc/grpc-wallet/grpc/examples/wallet/stats"
 	"google.golang.org/grpc/grpc-wallet/observability"
@@ -49,15 +51,17 @@ var users = map[string]map[string]string{
 	},
 }
 
+// TODO(easwars): Get rid of this struct and define flags as package globals.
 type arguments struct {
-	subcommand           string
-	walletServer         string
-	statsServer          string
-	user                 string
-	watch                bool
-	unaryWatch           bool
-	gcpClientProject     string
-	route                string
+	subcommand       string
+	walletServer     string
+	statsServer      string
+	user             string
+	watch            bool
+	unaryWatch       bool
+	gcpClientProject string
+	route            string
+	creds            string
 }
 
 var args arguments
@@ -72,6 +76,7 @@ func parseArguments() {
 	flags.BoolVar(&args.unaryWatch, "unary_watch", false, "if the balance/price should be watched but with repeated unary RPCs rather than a streaming rpc, default false")
 	flags.StringVar(&args.gcpClientProject, "gcp_client_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
 	flags.StringVar(&args.route, "route", "", "a string value to set for the 'route' header, unset by default")
+	flags.StringVar(&args.creds, "creds", "insecure", "type of transport credentials to use. Supported values include 'xds' and 'insecure', defaults to 'insecure'")
 	flags.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
 		fmt.Fprintf(flag.CommandLine.Output(), `
@@ -131,21 +136,13 @@ func handleBalanceResponse(r *walletpb.BalanceResponse) {
 }
 
 // balanceSubcommand handles the 'balance' subcommand.
-func balanceSubcommand() {
-	var opts = []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}
-	if args.gcpClientProject != "" {
-		opts = append(opts, grpc.WithStatsHandler(new(ocgrpc.ClientHandler)))
-	}
-	conn, err := grpc.Dial(args.walletServer, opts...)
-	if err != nil {
-		log.Fatalf("did not connect: %v.", err)
-	}
-	defer conn.Close()
+func balanceSubcommand(conn *grpc.ClientConn) {
 	c := walletpb.NewWalletClient(conn)
 	md, err := createMetaData()
 	if err != nil {
 		log.Fatalf("error creating metadata: %v.", err)
 	}
+
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 	if !args.watch {
 		for {
@@ -186,21 +183,13 @@ func balanceSubcommand() {
 }
 
 // priceSubcommand handles the 'price' subcommand.
-func priceSubcommand() {
-	var opts = []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}
-	if args.gcpClientProject != "" {
-		opts = append(opts, grpc.WithStatsHandler(new(ocgrpc.ClientHandler)))
-	}
-	conn, err := grpc.Dial(args.statsServer, opts...)
-	if err != nil {
-		log.Fatalf("did not connect: %v.", err)
-	}
-	defer conn.Close()
+func priceSubcommand(conn *grpc.ClientConn) {
 	c := statspb.NewStatsClient(conn)
 	md, err := createMetaData()
 	if err != nil {
 		log.Fatalf("error creating metadata: %v.", err)
 	}
+
 	ctx := metadata.NewOutgoingContext(context.Background(), md)
 	if !args.watch {
 		var header metadata.MD
@@ -236,15 +225,45 @@ func priceSubcommand() {
 func main() {
 	parseArguments()
 
+	// Parse credentials type from the command line to determine if xDS
+	// credentials are to be used.
+	xdsCreds, err := utility.ParseCredentialsType(args.creds)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("xDS credentials in use: %v", xdsCreds)
+
+	// Use insecure credentials by default. But if xDS credentials are specified
+	// on the command line, use xDS credentials with an insecure fallback.
+	creds := insecure.NewCredentials()
+	if xdsCreds {
+		var err error
+		creds, err = xdscreds.NewClientCredentials(xdscreds.ClientOptions{FallbackCreds: insecure.NewCredentials()})
+		if err != nil {
+			log.Fatalf("Failed to create client xDS credentials: %v", err)
+		}
+		log.Print("xDS credentials created")
+	}
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(creds), grpc.WithBlock()}
+
 	if args.gcpClientProject != "" {
+		opts = append(opts, grpc.WithStatsHandler(new(ocgrpc.ClientHandler)))
 		sd := observability.ConfigureStackdriver(args.gcpClientProject)
 		defer sd.Flush()
 		defer sd.StopMetricsExporter()
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	conn, err := grpc.DialContext(ctx, args.walletServer, opts...)
+	if err != nil {
+		log.Fatalf("Failed to connect to the Wallet server: %v", err)
+	}
+	defer conn.Close()
+
 	if args.subcommand == "balance" {
-		balanceSubcommand()
+		balanceSubcommand(conn)
 		return
 	}
-	priceSubcommand()
+	priceSubcommand(conn)
 }
