@@ -11,20 +11,18 @@ pushd java
 ./gradlew build
 popd
 
-export GOPATH="${HOME}/gopath"
+# Download the latest Go version in tmpdir and modify $PATH to include the
+# extracted `go` binary.
+walletBaseDir=${PWD}
+cd ${TMPDIR}
+wget https://dl.google.com/go/go1.16.5.linux-amd64.tar.gz
+tar -xvf go1.16.5.linux-amd64.tar.gz
+export GOROOT=${PWD}/go
+export PATH="${PWD}/go/bin:${PATH}"
+cd ${walletBaseDir}
+
 pushd go
-pushd account_server
-go build
-popd
-pushd stats_server
-go build
-popd
-pushd wallet_client
-go build
-popd
-pushd wallet_server
-go build
-popd
+go build google.golang.org/grpc/grpc-wallet/...
 popd
 
 tools/bazel build cpp/...
