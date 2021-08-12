@@ -1,0 +1,8 @@
+name: ${SERVER_MTLS_POLICY_NAME}
+serverCertificate:
+  certificateProviderInstance:
+    pluginInstance: google_cloud_private_spiffe
+mtlsPolicy:
+  clientValidationCa:
+  - certificateProviderInstance:
+      pluginInstance: google_cloud_private_spiffe

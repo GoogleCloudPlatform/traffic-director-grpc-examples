@@ -1,0 +1,78 @@
+defaultService: projects/${PROJECT_ID}/global/backendServices/${ACCOUNT_BACKEND_SERVICE_NAME}
+name: ${URL_MAP_NAME}
+
+hostRules:
+- hosts:
+  - account.grpcwallet.io
+  pathMatcher: ${ACCOUNT_PATH_MATCHER_NAME}
+- hosts:
+  - stats.grpcwallet.io
+  pathMatcher: ${STATS_PATH_MATCHER_NAME}
+- hosts:
+  - wallet.grpcwallet.io
+  pathMatcher: ${WALLET_PATH_MATCHER_NAME}
+
+pathMatchers:
+- defaultService: projects/${PROJECT_ID}/global/backendServices/${ACCOUNT_BACKEND_SERVICE_NAME}
+  name: ${ACCOUNT_PATH_MATCHER_NAME}
+
+- defaultService: projects/${PROJECT_ID}/global/backendServices/${STATS_BACKEND_SERVICE_NAME}
+  name: ${STATS_PATH_MATCHER_NAME}
+  routeRules:
+  - matchRules:
+    - prefixMatch: /
+      headerMatches:
+      - headerName: membership
+        exactMatch: premium
+    priority: 0
+    service: projects/${PROJECT_ID}/global/backendServices/${STATS_PREMIUM_BACKEND_SERVICE_NAME}
+
+- defaultService: projects/${PROJECT_ID}/global/backendServices/${WALLET_V1_BACKEND_SERVICE_NAME}
+  name: ${WALLET_PATH_MATCHER_NAME}
+  routeRules:
+  - matchRules:
+    - prefixMatch: /
+      headerMatches:
+      - headerName: route
+        exactMatch: timeout
+    priority: 0
+    routeAction:
+      weightedBackendServices:
+      - backendService: projects/${PROJECT_ID}/global/backendServices/${WALLET_V2_BACKEND_SERVICE_NAME}
+        weight: 100
+      maxStreamDuration:
+        seconds: 5
+
+  - matchRules:
+    - prefixMatch: /
+      headerMatches:
+      - headerName: route
+        exactMatch: fault
+    priority: 1
+    routeAction:
+      weightedBackendServices:
+      - backendService: projects/${PROJECT_ID}/global/backendServices/${WALLET_V2_BACKEND_SERVICE_NAME}
+        weight: 100
+      faultInjectionPolicy:
+        abort:
+          httpStatus: 503
+          percentage: 50
+
+  - matchRules:
+    - fullPathMatch: /grpc.examples.wallet.Wallet/FetchBalance
+    priority: 2
+    routeAction:
+      weightedBackendServices:
+      - backendService: projects/${PROJECT_ID}/global/backendServices/${WALLET_V2_BACKEND_SERVICE_NAME}
+        weight: 40
+      - backendService: projects/${PROJECT_ID}/global/backendServices/${WALLET_V1_BACKEND_SERVICE_NAME}
+        weight: 60
+
+  - matchRules:
+    - prefixMatch: /grpc.examples.wallet.Wallet/
+    priority: 3
+    routeAction:
+      weightedBackendServices:
+      - backendService: projects/${PROJECT_ID}/global/backendServices/${WALLET_V2_BACKEND_SERVICE_NAME}
+        weight: 100
+
