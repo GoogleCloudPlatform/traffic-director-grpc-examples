@@ -20,6 +20,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 
 import com.google.common.collect.ImmutableMap;
 import io.grpc.ChannelCredentials;
+import io.grpc.examples.wallet.WalletInterceptors.RouteHeaderInterceptor;
 import io.grpc.examples.wallet.account.AccountGrpc;
 import io.grpc.examples.wallet.account.GetUserInfoRequest;
 import io.grpc.examples.wallet.account.GetUserInfoResponse;
@@ -177,7 +178,8 @@ public class WalletServer {
                   ServerInterceptors.intercept(
                       new WalletImpl(accountChannel, statsChannel, v1Behavior),
                       new WalletInterceptors.HostnameInterceptor(),
-                      new WalletInterceptors.AuthInterceptor()))
+                      new WalletInterceptors.AuthInterceptor(),
+                      new RouteHeaderInterceptor()))
               .addService(ProtoReflectionService.newInstance())
               .addService(health.getHealthService())
               .build()
@@ -260,6 +262,14 @@ public class WalletServer {
     private ImmutableMap<String, Long> validateMembershipAndGetWallet(
         String token, String membership) {
       GetUserInfoResponse userInfo;
+      AccountGrpc.AccountBlockingStub accountBlockingStub = this.accountBlockingStub;
+      String routeVal = WalletInterceptors.ROUTE_KEY.get();
+      if (routeVal != null) {
+        Metadata headers = new Metadata();
+        headers.put(WalletInterceptors.ROUTE_MD_KEY, routeVal);
+        accountBlockingStub = accountBlockingStub.withInterceptors(
+            MetadataUtils.newAttachHeadersInterceptor(headers));
+      }
       try {
         userInfo =
             accountBlockingStub.getUserInfo(

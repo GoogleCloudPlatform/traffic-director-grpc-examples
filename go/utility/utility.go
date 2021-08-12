@@ -93,6 +93,10 @@ func ValidateMembership(inCtx context.Context, accountClient accountpb.AccountCl
 	if requestedMembership != "normal" && requestedMembership != "premium" {
 		return false, "", "", "", status.Error(codes.Unauthenticated, "unknown user membership")
 	}
+	routes, ok := inMd["route"]
+	if ok {
+	  inCtx = metadata.NewOutgoingContext(inCtx, metadata.Pairs("route", routes[0]))
+	}
 
 	// Perform RPC to account client.
 	var header metadata.MD
