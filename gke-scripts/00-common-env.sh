@@ -1,4 +1,4 @@
-#! /bin/sh
+#!/bin/sh
 
 export PROJECT_ID="YOUR_PROJECT_ID"
 export PROJECT_NUM=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")

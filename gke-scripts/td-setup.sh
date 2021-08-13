@@ -2,9 +2,9 @@
 
 set -euxo pipefail
 
-. ./00-common-env.sh
-. ./50-td-components.sh
-. ./60-routing-components.sh
+source ./00-common-env.sh
+source ./50-td-components.sh
+source ./60-routing-components.sh
 
 create_health_check ${ACCOUNT_SERVICE_HEALTH_CHECK_NAME} ${ACCOUNT_ADMIN_PORT}
 create_backend_service ${ACCOUNT_BACKEND_SERVICE_NAME} ${ACCOUNT_SERVICE_HEALTH_CHECK_NAME} ${ACCOUNT_NEG_NAME}
