@@ -48,7 +48,7 @@ class WalletClient {
   WalletClient(std::shared_ptr<Channel> channel)
       : stub_(Wallet::NewStub(channel)) {}
 
-  void FetchBalance(const std::string& user, const std::string& route) {
+  void FetchBalance(const std::string& user, const std::string& route, const bool affinity) {
     BalanceRequest request;
     request.set_include_balance_per_address(true);
     BalanceResponse response;
@@ -63,6 +63,9 @@ class WalletClient {
     }
     if (route != "") {
       context.AddMetadata("route", route);
+    }
+    if (affinity) {
+      context.AddMetadata("session_id", "1234");
     }
     Status status = stub_->FetchBalance(&context, request, &response);
     if (status.ok()) {
@@ -223,6 +226,7 @@ int main(int argc, char** argv) {
   std::string stats_server = "localhost:18882";
   std::string user = "Alice";
   std::string route = "";
+  bool affinity = false;
   bool watch = false;
   bool unary_watch = false;
   std::string gcp_client_project = "";
@@ -235,6 +239,7 @@ int main(int argc, char** argv) {
   std::string arg_str_unary_watch("--unary_watch");
   std::string arg_str_gcp_client_project("--gcp_client_project");
   std::string arg_str_route("--route");
+  std::string arg_str_affinity("--affinity");
   std::string creds_type =
       traffic_director_grpc_examples::ParseCommandLineArgForCredsType(argc,
                                                                       argv);
@@ -366,13 +371,35 @@ int main(int argc, char** argv) {
         return 1;
       }
     }
+
+    start_pos = arg_val.find(arg_str_affinity);
+    if (start_pos != std::string::npos) {
+      start_pos += arg_str_affinity.size();
+      if (arg_val[start_pos] == '=') {
+        if (arg_val.substr(start_pos + 1) == "true") {
+          affinity = true;
+          continue;
+        } else if (arg_val.substr(start_pos + 1) != "false") {
+          std::cout << "The only correct value for argument --affinity is "
+                       "true or false"
+                    << std::endl;
+          return 1;
+        }
+      } else {
+        std::cout << "The only correct argument syntax is --affinity="
+                  << std::endl;
+        return 1;
+      }
+    }
   }
+
   std::cout << "Client arguments: command: " << command
             << ", wallet_server: " << wallet_server
             << ", stats_server: " << stats_server << ", user: " << user
             << ", watch: " << watch << " ,unary_watch: " << unary_watch
             << ", gcp_client_project: " << gcp_client_project
-            << ", route: " << route << ", creds: " << creds_type << std::endl;
+            << ", route: " << route << ", affinitey: " << affinity
+            << ", creds: " << creds_type << std::endl;
 
   if (!gcp_client_project.empty()) {
     grpc::RegisterOpenCensusPlugin();
@@ -415,7 +442,7 @@ int main(int argc, char** argv) {
       wallet.WatchBalance(user, route);
     } else {
       while (true) {
-        wallet.FetchBalance(user, route);
+        wallet.FetchBalance(user, route, affinity);
         if (!unary_watch) break;
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
       }
