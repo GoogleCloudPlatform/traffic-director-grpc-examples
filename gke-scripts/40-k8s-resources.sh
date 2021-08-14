@@ -18,7 +18,6 @@ function create_k8s_resources {
   # Convert the optional args to be passed to the binary into a comma seperated
   # string of arguments. Moving to this format makes it easier to specify as an
   # array in the `args` field of the `container` spec in the deployment.
-  # TODO(easwars): See if there is a better way to do this.
   i=1
   export SERVICE_ARGS=
   while [ $# -ne 0 ]

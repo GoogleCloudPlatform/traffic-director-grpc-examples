@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 
 set -euxo pipefail
 
@@ -25,6 +25,6 @@ gcloud compute firewall-rules create ${FIREWALL_RULE_NAME} \
     --network default --action allow --direction INGRESS \
     --source-ranges 35.191.0.0/16,130.211.0.0/22 \
     --target-tags allow-health-checks \
-    --rules tcp
+    --rules tcp:${ACCOUNT_ADMIN_PORT},tcp:${STATS_ADMIN_PORT},tcp:${STATS_PREMIUM_ADMIN_PORT},tcp:${WALLET_V1_ADMIN_PORT},tcp:${WALLET_V2_ADMIN_PORT}
 
 create_routing_components

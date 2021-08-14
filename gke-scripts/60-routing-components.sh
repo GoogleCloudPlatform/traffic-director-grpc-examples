@@ -4,7 +4,7 @@ function create_routing_components {
   envsubst < ./UrlMapConfig.yaml | gcloud compute url-maps import ${URL_MAP_NAME}
 
   gcloud compute target-grpc-proxies create ${GRPC_PROXY_NAME} \
-    --url-map ${URL_MAP_NAME} \
+    --url-map=${URL_MAP_NAME} \
     --validate-for-proxyless
 
   gcloud compute forwarding-rules create ${FORWARDING_RULE_NAME} \
@@ -12,9 +12,9 @@ function create_routing_components {
     --load-balancing-scheme=INTERNAL_SELF_MANAGED \
     --address=0.0.0.0 \
     --target-grpc-proxy=${GRPC_PROXY_NAME} \
-    --ports 80 \
+    --ports=80 \
     --address-region=${CLUSTER_ZONE} \
-    --network default
+    --network=default
 }
 
 function delete_routing_components {

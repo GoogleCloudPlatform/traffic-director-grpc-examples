@@ -75,4 +75,3 @@ pathMatchers:
       weightedBackendServices:
       - backendService: projects/${PROJECT_ID}/global/backendServices/${WALLET_V2_BACKEND_SERVICE_NAME}
         weight: 100
-

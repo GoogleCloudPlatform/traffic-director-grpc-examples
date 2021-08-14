@@ -13,29 +13,29 @@ function enable_apis {
 
   # Allow the default GCE service account access to TD APIs.
   gcloud projects add-iam-policy-binding ${PROJECT_ID} \
-    --member serviceAccount:${GSA_EMAIL} \
-    --role roles/trafficdirector.client
+    --member=serviceAccount:${GSA_EMAIL} \
+    --role=roles/trafficdirector.client
 }
 
 function create_cloud_router_instances {
   gcloud compute routers create ${CLOUD_ROUTER_NAME} \
-    --network default \
-    --region ${CLUSTER_REGION}
+    --network=default \
+    --region=${CLUSTER_REGION}
 
   gcloud compute routers nats create nat-config \
-    --router-region ${CLUSTER_REGION} \
-    --router ${CLOUD_ROUTER_NAME} \
+    --router-region=${CLUSTER_REGION} \
+    --router=${CLOUD_ROUTER_NAME} \
     --nat-all-subnet-ip-ranges \
     --auto-allocate-nat-external-ips
 }
 
 function delete_cloud_router_instances {
   gcloud compute routers delete ${CLOUD_ROUTER_NAME} \
-    --region ${CLUSTER_REGION} -q
+    --region=${CLUSTER_REGION} -q
 }
 
-function disable_apis {
+function delete_policy_bindings {
   gcloud projects remove-iam-policy-binding ${PROJECT_ID} \
-    --member serviceAccount:${GSA_EMAIL} \
-    --role roles/trafficdirector.client -q
+    --member=serviceAccount:${GSA_EMAIL} \
+    --role=roles/trafficdirector.client -q
 }

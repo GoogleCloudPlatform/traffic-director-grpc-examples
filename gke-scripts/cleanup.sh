@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 
 set -x
 
@@ -41,4 +41,4 @@ delete_server_security_components
 delete_client_security_components
 
 gcloud compute firewall-rules delete ${FIREWALL_RULE_NAME}  -q
-disable_apis
+delete_policy_bindings

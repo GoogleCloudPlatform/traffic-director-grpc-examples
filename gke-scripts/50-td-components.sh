@@ -25,14 +25,14 @@ function create_backend_service {
     --global \
     --load-balancing-scheme=INTERNAL_SELF_MANAGED \
     --protocol=GRPC \
-    --health-checks ${HEALTH_CHECK_NAME}
+    --health-checks=${HEALTH_CHECK_NAME}
 
   gcloud compute backend-services add-backend ${BACKEND_SERVICE_NAME} \
     --global \
-    --network-endpoint-group ${NEG_NAME} \
-    --network-endpoint-group-zone ${CLUSTER_ZONE} \
-    --balancing-mode RATE \
-    --max-rate-per-endpoint 5
+    --network-endpoint-group=${NEG_NAME} \
+    --network-endpoint-group-zone=${CLUSTER_ZONE} \
+    --balancing-mode=RATE \
+    --max-rate-per-endpoint=5
 
   # Wait for the backend to become healthy
   gcloud compute backend-services get-health ${BACKEND_SERVICE_NAME} --global
@@ -51,7 +51,7 @@ function delete_backend_service {
   gcloud compute backend-services delete ${BACKEND_SERVICE_NAME} --global -q
 
   gcloud compute network-endpoint-groups delete ${NEG_NAME} \
-    --zone ${CLUSTER_ZONE} -q
+    --zone=${CLUSTER_ZONE} -q
 }
 
 function delete_health_check {
