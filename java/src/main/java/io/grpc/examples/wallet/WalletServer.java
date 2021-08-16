@@ -171,32 +171,19 @@ public class WalletServer {
         credentialsType == CredentialsType.XDS
             ? XdsServerCredentials.create(InsecureServerCredentials.create())
             : InsecureServerCredentials.create();
-    if (credentialsType == CredentialsType.XDS) {
-      server =
-          XdsServerBuilder.forPort(port, serverCredentials)
-              .addService(
-                  ServerInterceptors.intercept(
-                      new WalletImpl(accountChannel, statsChannel, v1Behavior),
-                      new WalletInterceptors.HostnameInterceptor(),
-                      new WalletInterceptors.AuthInterceptor(),
-                      new RouteHeaderInterceptor()))
-              .addService(ProtoReflectionService.newInstance())
-              .addService(health.getHealthService())
-              .build()
-              .start();
-    } else {
-      server =
-          ServerBuilder.forPort(port)
-              .addService(
-                  ServerInterceptors.intercept(
-                      new WalletImpl(accountChannel, statsChannel, v1Behavior),
-                      new WalletInterceptors.HostnameInterceptor(),
-                      new WalletInterceptors.AuthInterceptor()))
-              .addService(ProtoReflectionService.newInstance())
-              .addService(health.getHealthService())
-              .build()
-              .start();
-    }
+
+    server =
+        XdsServerBuilder.forPort(port, serverCredentials)
+            .addService(
+                ServerInterceptors.intercept(
+                    new WalletImpl(accountChannel, statsChannel, v1Behavior),
+                    new WalletInterceptors.HostnameInterceptor(),
+                    new WalletInterceptors.AuthInterceptor(),
+                    new RouteHeaderInterceptor()))
+            .addService(ProtoReflectionService.newInstance())
+            .addService(health.getHealthService())
+            .build()
+            .start();
     health.setStatus("", ServingStatus.SERVING);
     logger.info("Server started, listening on " + port);
     Runtime.getRuntime()
