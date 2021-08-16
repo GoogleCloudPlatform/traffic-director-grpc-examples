@@ -84,7 +84,7 @@ class WalletServiceImpl final : public Wallet::Service {
     request.set_token(token_);
     ClientContext context;
     context.set_wait_for_ready(true);
-    if (route_ != nullptr)
+    if (!route_.empty())
       context.AddMetadata("route", route_);
     GetUserInfoResponse response;
     Status status = account_stub_->GetUserInfo(&context, request, &response);
