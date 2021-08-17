@@ -263,9 +263,7 @@ public class WalletServer {
                 GetUserInfoRequest.newBuilder().setToken(token).build());
       } catch (StatusRuntimeException e) {
         logger.log(Level.WARNING, "Account RPC failed: {0}", e.getStatus());
-        throw Status.INTERNAL
-            .withDescription("Failed to connect to account server " + e.getMessage())
-            .asRuntimeException();
+        throw e;
       }
       if ("premium".equals(membership) && userInfo.getMembership() != MembershipType.PREMIUM) {
         throw Status.UNAUTHENTICATED
