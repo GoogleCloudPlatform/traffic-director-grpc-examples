@@ -96,6 +96,7 @@ class WalletServiceImpl final : public Wallet::Service {
     } else {
       std::cout << status.error_code() << ": " << status.error_message()
                 << std::endl;
+      return false;
     }
     user_ = response.name();
     // User requested premium service, but the user is not a premium user,
