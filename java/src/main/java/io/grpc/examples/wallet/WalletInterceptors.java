@@ -23,6 +23,7 @@ import io.grpc.Contexts;
 import io.grpc.ForwardingServerCall.SimpleForwardingServerCall;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
+import io.grpc.ServerCall.Listener;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.Status;
@@ -38,12 +39,15 @@ final class WalletInterceptors {
 
   public static final Context.Key<String> TOKEN_KEY = Context.key("token");
   public static final Context.Key<String> MEMBERSHIP_KEY = Context.key("membership");
+  public static final Context.Key<String> ROUTE_KEY = Context.key("route");
   public static final Metadata.Key<String> TOKEN_MD_KEY =
       Metadata.Key.of("Authorization", ASCII_STRING_MARSHALLER);
   public static final Metadata.Key<String> MEMBERSHIP_MD_KEY =
       Metadata.Key.of("membership", ASCII_STRING_MARSHALLER);
   public static final Metadata.Key<String> HOSTNAME_MD_KEY =
       Metadata.Key.of("hostname", ASCII_STRING_MARSHALLER);
+  public static final Metadata.Key<String> ROUTE_MD_KEY =
+      Metadata.Key.of("route", ASCII_STRING_MARSHALLER);
 
   /** Adds the server hostname to response metadata. */
   static class HostnameInterceptor implements ServerInterceptor {
@@ -104,6 +108,18 @@ final class WalletInterceptors {
       }
       Context newContext =
           Context.current().withValue(TOKEN_KEY, token).withValue(MEMBERSHIP_KEY, membership);
+      return Contexts.interceptCall(newContext, call, requestHeaders, next);
+    }
+  }
+
+  /** Extracts route header value from metadata and inserts into context. */
+  static class RouteHeaderInterceptor implements ServerInterceptor {
+    @Override
+    public <ReqT, RespT> Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
+        Metadata requestHeaders, ServerCallHandler<ReqT, RespT> next) {
+      String routeVal = requestHeaders.get(ROUTE_MD_KEY);
+      Context newContext =
+          Context.current().withValue(ROUTE_KEY, routeVal);
       return Contexts.interceptCall(newContext, call, requestHeaders, next);
     }
   }

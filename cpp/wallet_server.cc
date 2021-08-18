@@ -77,11 +77,15 @@ class WalletServiceImpl final : public Wallet::Service {
         token_ = std::string(iter->second.data(), iter->second.size());
       else if (iter->first == "membership")
         membership_ = std::string(iter->second.data(), iter->second.size());
+      else if (iter->first == "route")
+        route_ = std::string(iter->second.data(), iter->second.size());
     }
     GetUserInfoRequest request;
     request.set_token(token_);
     ClientContext context;
     context.set_wait_for_ready(true);
+    if (!route_.empty())
+      context.AddMetadata("route", route_);
     GetUserInfoResponse response;
     Status status = account_stub_->GetUserInfo(&context, request, &response);
     if (status.ok()) {
@@ -241,6 +245,7 @@ class WalletServiceImpl final : public Wallet::Service {
   std::string token_;
   std::string user_ = "Alice";
   std::string membership_ = "premium";
+  std::string route_;
   std::map<std::string, std::map<std::string, int>> user_coin_map_ = {
       {"Alice", {{"cd0aa985", 314}, {"454349e4", 159}}},
       {"Bob", {{"148de9c5", 271}, {"2e7d2c03", 828}}}};

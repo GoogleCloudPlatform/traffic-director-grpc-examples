@@ -250,7 +250,9 @@ public class Client {
               + c.unaryWatch
               + "\n  --creds=insecure|xds  . Type of credentials to use on the client. "
               + "Default "
-              + c.credentialsType.toString().toLowerCase());
+              + c.credentialsType.toString().toLowerCase()
+              + "\n  --route                   A string value to set for the 'route' header. "
+              + "Optional");
       System.exit(1);
     }
   }
