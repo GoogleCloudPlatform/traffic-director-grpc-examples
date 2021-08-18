@@ -69,7 +69,7 @@ class WalletServiceImpl final : public Wallet::Service {
   }
 
  private:
-  bool ObtainAndValidateUserAndMembership(ServerContext* server_context) {
+  Status ObtainAndValidateUserAndMembership(ServerContext* server_context) {
     const std::multimap<grpc::string_ref, grpc::string_ref> metadata =
         server_context->client_metadata();
     for (auto iter = metadata.begin(); iter != metadata.end(); ++iter) {
@@ -96,6 +96,7 @@ class WalletServiceImpl final : public Wallet::Service {
     } else {
       std::cout << status.error_code() << ": " << status.error_message()
                 << std::endl;
+      return status;
     }
     user_ = response.name();
     // User requested premium service, but the user is not a premium user,
@@ -107,13 +108,14 @@ class WalletServiceImpl final : public Wallet::Service {
                 << std::endl;
       std::cout << "requested membership: " << membership_
                 << ", authentication FAILED" << std::endl;
-      return false;
+      return Status(StatusCode::UNAUTHENTICATED,
+                    "membership authentication failed");
     }
     std::cout << "token: " << token_ << ", name: " << user_
               << ", membership: " << response.membership() << "," << std::endl;
     std::cout << "requested membership: " << membership_
               << ", authentication success true" << std::endl;
-    return true;
+    return Status::OK;
   }
 
   int ObtainAndBuildPerAddressResponse(const int price,
@@ -142,9 +144,9 @@ class WalletServiceImpl final : public Wallet::Service {
       // Run in OpenCensus span received from the client to correlate the traces
       // in Cloud Monitoring.
       opencensus::trace::WithSpan ws(span);
-      if (!ObtainAndValidateUserAndMembership(context)) {
-        return Status(StatusCode::UNAUTHENTICATED,
-                      "membership authentication failed");
+      auto status = ObtainAndValidateUserAndMembership(context);
+      if (!status.ok()) {
+        return status;
       }
       context->AddInitialMetadata("hostname", hostname_);
       ClientContext stats_context;

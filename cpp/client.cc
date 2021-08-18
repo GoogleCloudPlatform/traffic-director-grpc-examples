@@ -48,7 +48,8 @@ class WalletClient {
   WalletClient(std::shared_ptr<Channel> channel)
       : stub_(Wallet::NewStub(channel)) {}
 
-  void FetchBalance(const std::string& user, const std::string& route, const bool affinity) {
+  void FetchBalance(const std::string& user, const std::string& route,
+                    const bool affinity) {
     BalanceRequest request;
     request.set_include_balance_per_address(true);
     BalanceResponse response;
