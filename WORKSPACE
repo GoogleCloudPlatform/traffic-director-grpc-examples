@@ -26,9 +26,9 @@ switched_rules_by_language(
 
 http_archive(
     name = "com_github_grpc_grpc",
-    strip_prefix = "grpc-1.37.1",
+    strip_prefix = "grpc-1.40.0",
     urls = [
-        "https://github.com/grpc/grpc/archive/v1.37.1.tar.gz",
+        "https://github.com/grpc/grpc/archive/v1.40.0.tar.gz",
     ],
 )
 
