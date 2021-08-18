@@ -6,7 +6,8 @@
 set -x
 
 PROJECT_ID=$(gcloud config list --format 'value(core.project)')
-gcloud compute url-maps import grpcwallet-url-map --source=<(sed -e "s/\${PROJECT_ID}/${PROJECT_ID}/" url_map_template.yaml)
+BS_PREFIX=projects/${PROJECT_ID}/global/backendServices/grpcwallet
+gcloud compute url-maps import grpcwallet-url-map --source=<(sed -e "s/\$BS_PREFIX/${BS_PREFIX}/" url_map_template.yaml)
 
 gcloud compute target-grpc-proxies create grpcwallet-proxy \
     --url-map grpcwallet-url-map \
