@@ -1,50 +1,123 @@
-# Populate project ID as: PROJECT_ID = $(gcloud config list --format 'value(core.project)').
+# $BS_PREFIX is populated as
+# BS_PREFIX=projects/${PROJECT_ID}/global/backendServices/grpcwallet
+# where ${PROJECT_ID} is populated as
+# PROJECT_ID=$(gcloud config list --format 'value(core.project)')
 
-defaultService: projects/${PROJECT_ID}/global/backendServices/grpcwallet-account-service
 name: grpcwallet-url-map
+defaultService: $BS_PREFIX-account-service
 
 hostRules:
-  - hosts:
-      - account.grpcwallet.io
-    pathMatcher: grpcwallet-account-path-matcher
-  - hosts:
-      - stats.grpcwallet.io
-    pathMatcher: grpcwallet-stats-path-matcher
-  - hosts:
-      - wallet.grpcwallet.io
-    pathMatcher: grpcwallet-wallet-path-matcher
+- hosts:
+  - account.grpcwallet.io
+  pathMatcher: grpcwallet-account-path-matcher
+- hosts:
+  - stats.grpcwallet.io
+  pathMatcher: grpcwallet-stats-path-matcher
+- hosts:
+  - wallet.grpcwallet.io
+  pathMatcher: grpcwallet-wallet-path-matcher
 
 pathMatchers:
-  - defaultService: projects/${PROJECT_ID}/global/backendServices/grpcwallet-account-service
-    name: grpcwallet-account-path-matcher
+- name: grpcwallet-account-path-matcher
+  defaultService: $BS_PREFIX-account-service
+  routeRules:
+  - matchRules:
+    - prefixMatch: /
+      headerMatches:
+      - headerName: route
+        exactMatch: account-fault
+      priority: 0
+      routeAction:
+        weightedBackendServices:
+        - backendService: $BS_PREFIX-account-service
+          weight: 100
+        faultInjectionPolicy:
+          abort:
+            httpStatus: 503
+            percentage: 30
 
-  - defaultService: projects/${PROJECT_ID}/global/backendServices/grpcwallet-stats-service
-    name: grpcwallet-stats-path-matcher
-    routeRules:
-      - matchRules:
-          - prefixMatch: /
-            headerMatches:
-              - headerName: membership
-                exactMatch: premium
-        priority: 0
-        service: projects/${PROJECT_ID}/global/backendServices/grpcwallet-stats-premium-service
+- name: grpcwallet-stats-path-matcher
+  defaultService: $BS_PREFIX-stats-service
+  routeRules:
+  - matchRules:
+    - prefixMatch: /
+      headerMatches:
+      - headerName: membership
+        exactMatch: premium
+    priority: 0
+    service: $BS_PREFIX-stats-premium-service
 
-  - defaultService: projects/${PROJECT_ID}/global/backendServices/grpcwallet-wallet-v1-service
-    name: grpcwallet-wallet-path-matcher
-    routeRules:
-      - matchRules:
-          - fullPathMatch: /grpc.examples.wallet.Wallet/FetchBalance
-        priority: 0
-        routeAction:
-          weightedBackendServices:
-            - backendService: projects/${PROJECT_ID}/global/backendServices/grpcwallet-wallet-v2-service
-              weight: 40
-            - backendService: projects/${PROJECT_ID}/global/backendServices/grpcwallet-wallet-v1-service
-              weight: 60
-      - matchRules:
-          - prefixMatch: /grpc.examples.wallet.Wallet/
-        priority: 1
-        routeAction:
-          weightedBackendServices:
-            - backendService: projects/${PROJECT_ID}/global/backendServices/grpcwallet-wallet-v2-service
-              weight: 100
+- name: grpcwallet-wallet-path-matcher
+  defaultService: $BS_PREFIX-wallet-v1-service
+  routeRules:
+  - matchRules:
+    - prefixMatch: /
+      headerMatches:
+      - headerName: session_id
+        presentMatch: true
+    priority: 0
+    routeAction:
+      weightedBackendServices:
+      - backendService: $BS_PREFIX-wallet-v1-affinity-service
+        weight: 100
+
+  - matchRules:
+    - prefixMatch: /
+      headerMatches:
+      - headerName: route
+        exactMatch: timeout
+    priority: 1
+    routeAction:
+      weightedBackendServices:
+      - backendService: $BS_PREFIX-wallet-v2-service
+        weight: 100
+      maxStreamDuration:
+        seconds: 5
+
+  - matchRules:
+    - prefixMatch: /
+      headerMatches:
+      - headerName: route
+        exactMatch: fault
+    priority: 2
+    routeAction:
+      weightedBackendServices:
+      - backendService: $BS_PREFIX-wallet-v2-service
+        weight: 100
+      faultInjectionPolicy:
+        abort:
+          httpStatus: 503
+          percentage: 50
+
+  - matchRules:
+    - prefixMatch: /
+      headerMatches:
+      - headerName: membership
+        exactMatch: premium
+    priority: 3
+    routeAction:
+      weightedBackendServices:
+      - backendService: $BS_PREFIX-wallet-v1-service
+        weight: 100
+      retryPolicy:
+        retryConditions:
+        - unavailable
+        numRetries: 3
+
+  - matchRules:
+    - fullPathMatch: /grpc.examples.wallet.Wallet/FetchBalance
+    priority: 4
+    routeAction:
+      weightedBackendServices:
+      - backendService: $BS_PREFIX-wallet-v1-service
+        weight: 70
+      - backendService: $BS_PREFIX-wallet-v2-service
+        weight: 30
+
+  - matchRules:
+    - prefixMatch: /grpc.examples.wallet.Wallet/
+    priority: 5
+    routeAction:
+      weightedBackendServices:
+      - backendService: $BS_PREFIX-wallet-v2-service
+        weight: 100
