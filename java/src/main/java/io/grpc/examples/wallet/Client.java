@@ -54,6 +54,8 @@ public class Client {
 
   static final String ALICE_TOKEN = "2bd806c9";
   static final String BOB_TOKEN = "81b637d8";
+  static final Metadata.Key<String> SESSION_ID_MD_KEY =
+      Metadata.Key.of("session_id", ASCII_STRING_MARSHALLER);
   static final Metadata.Key<String> ROUTE_MD_KEY =
       Metadata.Key.of("route", ASCII_STRING_MARSHALLER);
 
@@ -65,6 +67,7 @@ public class Client {
   private String route = "";
   private boolean watch;
   private boolean unaryWatch;
+  private boolean affinity;
   private CredentialsType credentialsType = CredentialsType.INSECURE;
 
   public void run() throws InterruptedException, ExecutionException {
@@ -93,6 +96,9 @@ public class Client {
     } else {
       headers.put(WalletInterceptors.TOKEN_MD_KEY, BOB_TOKEN);
       headers.put(WalletInterceptors.MEMBERSHIP_MD_KEY, "normal");
+    }
+    if (affinity) {
+      headers.put(SESSION_ID_MD_KEY, "1234");
     }
     if (!route.isEmpty()) {
       headers.put(ROUTE_MD_KEY, route);
@@ -212,6 +218,8 @@ public class Client {
         watch = Boolean.parseBoolean(value);
       } else if ("unary_watch".equals(key)) {
         unaryWatch = Boolean.parseBoolean(value);
+      } else if ("affinity".equals(key)) {
+        affinity = Boolean.parseBoolean(value);
       } else if ("route".equals(key)) {
         route = value;
       } else if ("creds".equals(key)) {
@@ -248,6 +256,8 @@ public class Client {
               + "\n                            command). Requires watch=false."
               + " Default "
               + c.unaryWatch
+              + "\n  --affinity=true|false     Send requests with session affinity. Default "
+              + c.affinity
               + "\n  --creds=insecure|xds  . Type of credentials to use on the client. "
               + "Default "
               + c.credentialsType.toString().toLowerCase()
