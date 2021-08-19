@@ -110,16 +110,16 @@ public class ObservabilityTest {
   }
 
   private class RecordingTraceExporter extends SpanExporter.Handler {
-    // The trace span exported by the client (identified by a null parent span)
+    // The trace span exported by the client
     SpanData clientSpanData = null;
-    // The trace span exported by the server (identified by a non-null parent span)
+    // The trace span exported by the server (identified by span name with prefix "Recv.")
     SpanData serverSpanData = null;
     CountDownLatch latch = new CountDownLatch(2);
 
     @Override
     public void export(Collection<SpanData> spanDataList) {
       for (SpanData sd : spanDataList) {
-        if (sd.getParentSpanId() != null) {
+        if (sd.getName().startsWith("Recv.")) {
           assertThat(serverSpanData).isNull();
           serverSpanData = sd;
         } else {
