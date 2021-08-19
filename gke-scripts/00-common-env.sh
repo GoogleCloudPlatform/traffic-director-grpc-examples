@@ -84,6 +84,16 @@ export CLIENT_DEPLOYMENT_NAME="wallet-client"
 export CLIENT_SERVICE_ACCOUNT_NAME="wallet-client-sa"
 export CLIENT_IMAGE="gcr.io/${PROJECT_ID}/psms-wallet-example:1.00"
 
+# Private CA resources
+export ROOT_CA_NAME="wallet-root-ca"
+export ROOT_CA_LOCATION="us-east1"
+export ROOT_CA_ORGANIZATION="TestCorpLLC"
+export ROOT_CA_URI="//privateca.googleapis.com/projects/${PROJECT_ID}/locations/${ROOT_CA_LOCATION}/certificateAuthorities/${ROOT_CA_NAME}"
+export SUBORDINATE_CA_NAME="wallet-subordinate-ca"
+export SUBORDINATE_CA_ORGANIZATION="TestCorpLLC"
+export SUBORDINATE_CA_LOCATION="us-east1"
+export SUBORDINATE_CA_URI="//privateca.googleapis.com/projects/${PROJECT_ID}/locations/${SUBORDINATE_CA_LOCATION}/certificateAuthorities/${SUBORDINATE_CA_NAME}"
+
 # Security related configuration
 export SERVER_MTLS_POLICY_NAME="server-mtls-policy"
 export ENDPOINT_MTLS_POLICY_NAME="ep-mtls-psms"
