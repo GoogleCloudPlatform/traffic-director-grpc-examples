@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${SERVICE_NAME}
+  namespace: default
+  labels:
+    run: ${SERVICE_NAME}
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      run: ${SERVICE_NAME}
+  template:
+    metadata:
+      annotations:
+         security.cloud.google.com/use-workload-certificates: ""
+      labels:
+        run: ${SERVICE_NAME}
+    spec:
+      containers:
+      - image: ${SERVICE_IMAGE_NAME}
+        imagePullPolicy: Always
+        name: ${SERVICE_NAME}
+        args: [${SERVICE_ARGS}]
+        env:
+        - name: GRPC_XDS_BOOTSTRAP
+          value: "/tmp/grpc-xds/td-grpc-bootstrap.json"
+        - name: GRPC_XDS_EXPERIMENTAL_SECURITY_SUPPORT
+          value: "true"
+        - name: GRPC_GO_LOG_SEVERITY_LEVEL
+          value: "info"
+        - name: GRPC_GO_LOG_VERBOSITY_LEVEL
+          value: "2"
+        ports:
+        - protocol: TCP
+          containerPort: ${SERVICE_PORT}
+        resources:
+          limits:
+            cpu: 800m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 512Mi
+        volumeMounts:
+        - name: grpc-td-conf
+          mountPath: /tmp/grpc-xds/
+      initContainers:
+      - name: grpc-td-init
+        image: gcr.io/trafficdirector-prod/td-grpc-bootstrap:0.12.0-rc1
+        imagePullPolicy: Always
+        args:
+        - --output
+        - "/tmp/bootstrap/td-grpc-bootstrap.json"
+        - --include-psm-security-experimental
+        resources:
+          limits:
+            cpu: 100m
+            memory: 100Mi
+          requests:
+            cpu: 10m
+            memory: 100Mi
+        volumeMounts:
+        - name: grpc-td-conf
+          mountPath: /tmp/bootstrap/
+      serviceAccountName: ${SERVICE_ACCOUNT_NAME}
+      volumes:
+      - name: grpc-td-conf
+        emptyDir:
+          medium: Memory

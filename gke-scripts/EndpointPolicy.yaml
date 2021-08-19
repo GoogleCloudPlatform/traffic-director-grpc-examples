@@ -1,0 +1,12 @@
+name: ${ENDPOINT_MTLS_POLICY_NAME}
+type: "GRPC_SERVER"
+serverTlsPolicy: ${SERVER_MTLS_POLICY_NAME}
+trafficPortSelector:
+  ports:
+  - "${ACCOUNT_SERVICE_PORT}"
+  - "${STATS_SERVICE_PORT}"
+  - "${WALLET_V1_SERVICE_PORT}"
+endpointMatcher:
+  metadataLabelMatcher:
+    metadataLabelMatchCriteria: "MATCH_ANY"
+    metadataLabels: []

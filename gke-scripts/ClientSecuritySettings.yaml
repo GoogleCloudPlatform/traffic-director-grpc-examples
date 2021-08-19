@@ -1,0 +1,8 @@
+securitySettings:
+  clientTlsPolicy: projects/${PROJECT_ID}/locations/global/clientTlsPolicies/${CLIENT_MTLS_POLICY_NAME}
+  subjectAltNames:
+    - "spiffe://${PROJECT_ID}.svc.id.goog/ns/default/sa/${ACCOUNT_SERVICE_SA_NAME}"
+    - "spiffe://${PROJECT_ID}.svc.id.goog/ns/default/sa/${STATS_SERVICE_SA_NAME}"
+    - "spiffe://${PROJECT_ID}.svc.id.goog/ns/default/sa/${STATS_PREMIUM_SERVICE_SA_NAME}"
+    - "spiffe://${PROJECT_ID}.svc.id.goog/ns/default/sa/${WALLET_V1_SERVICE_SA_NAME}"
+    - "spiffe://${PROJECT_ID}.svc.id.goog/ns/default/sa/${WALLET_V2_SERVICE_SA_NAME}"

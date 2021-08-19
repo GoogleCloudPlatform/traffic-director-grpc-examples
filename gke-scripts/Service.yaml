@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${SERVICE_NAME}
+  namespace: default
+  labels:
+    run: ${SERVICE_NAME}
+  annotations:
+    cloud.google.com/neg: '{"exposed_ports":{"8080":{"name": "${NEG_NAME}"}}}'
+spec:
+  ports:
+  - name: ${SERVICE_NAME}
+    port: 8080
+    protocol: TCP
+    targetPort: ${SERVICE_PORT}
+  selector:
+    run: ${SERVICE_NAME}
+  type: ClusterIP
