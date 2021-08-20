@@ -194,9 +194,9 @@ class WalletServiceImpl final : public Wallet::Service {
       // Run in OpenCensus span received from the client to correlate the traces
       // in Cloud Monitoring.
       opencensus::trace::WithSpan ws(span);
-      if (!ObtainAndValidateUserAndMembership(context)) {
-        return Status(StatusCode::UNAUTHENTICATED,
-                      "membership authentication failed");
+      auto status = ObtainAndValidateUserAndMembership(context);
+      if (!status.ok()) {
+        return status;
       }
       context->AddInitialMetadata("hostname", hostname_);
       ClientContext stats_context;
