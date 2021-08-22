@@ -16,6 +16,7 @@ services=(
     "grpcwallet-wallet-v1"
     "grpcwallet-wallet-v2"
 )
+gcloud compute backend-services delete grpcwallet-wallet-v1-affinity-service --global -q
 for s in "${services[@]}"; do
     gcloud compute backend-services delete "$s"-service --global -q
     gcloud compute instance-groups managed delete "$s"-mig-us-central1 --zone us-central1-a -q
