@@ -26,15 +26,15 @@ pathMatchers:
       headerMatches:
       - headerName: route
         exactMatch: account-fault
-      priority: 0
-      routeAction:
-        weightedBackendServices:
-        - backendService: $BS_PREFIX-account-service
-          weight: 100
-        faultInjectionPolicy:
-          abort:
-            httpStatus: 503
-            percentage: 30
+    priority: 0
+    routeAction:
+      weightedBackendServices:
+      - backendService: $BS_PREFIX-account-service
+        weight: 100
+      faultInjectionPolicy:
+        abort:
+          httpStatus: 503
+          percentage: 30
 
 - name: grpcwallet-stats-path-matcher
   defaultService: $BS_PREFIX-stats-service
