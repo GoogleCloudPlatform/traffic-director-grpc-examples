@@ -27,7 +27,14 @@ fi
 case "${language}" in
     go)
         build_script="cd \"traffic-director-grpc-examples/go/${service_type}_server\"
-sudo apt-get install -y golang
+pushd \$(mktemp -d)
+sudo apt-get install -y wget
+wget https://dl.google.com/go/go1.16.5.linux-amd64.tar.gz
+tar -xvf go1.16.5.linux-amd64.tar.gz
+export GOROOT=\${PWD}/go
+export PATH=\"\${PWD}/go/bin:\${PATH}\"
+popd
+export GOPATH=\${PWD}
 go build ."
         server="./${service_type}_server"
         ;;
