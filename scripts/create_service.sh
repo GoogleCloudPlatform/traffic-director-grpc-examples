@@ -97,23 +97,3 @@ circuitBreakers:
 fi
 
 gcloud compute backend-services import grpcwallet-${hostname_suffix}-service --global <<< "${backend_config}"
-
-if [ "${hostname_suffix}" = "wallet-v1" ]; then
-    backend_config="backends:
-- balancingMode: UTILIZATION
-  capacityScaler: 1.0
-  group: projects/${project_id}/zones/us-central1-a/instanceGroups/grpcwallet-${hostname_suffix}-mig-us-central1
-connectionDraining:
-  drainingTimeoutSec: 0
-healthChecks:
-- projects/${project_id}/global/healthChecks/grpcwallet-health-check
-loadBalancingScheme: INTERNAL_SELF_MANAGED
-name: grpcwallet-${hostname_suffix}-affinity-service
-portName: grpcwallet-${service_type}-port
-protocol: GRPC
-sessionAffinity: HEADER_FIELD
-localityLbPolicy: RING_HASH
-consistentHash:
-  httpHeaderName: session_id"
-gcloud compute backend-services import grpcwallet-${hostname_suffix}-affinity-service --global <<< "${backend_config}"
-fi
