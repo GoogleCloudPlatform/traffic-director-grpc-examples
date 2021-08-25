@@ -31,8 +31,6 @@ wget https://dl.google.com/go/go1.16.5.linux-amd64.tar.gz
 sudo tar -C /usr/local -xvf go1.16.5.linux-amd64.tar.gz
 sudo cp /usr/local/go/bin/go /usr/bin/go
 cd \"traffic-director-grpc-examples/go/${service_type}_server\"
-go build .
-go get google.golang.org/grpc
 go build ."
         server="./${service_type}_server"
         ;;
