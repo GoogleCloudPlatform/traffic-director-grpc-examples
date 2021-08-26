@@ -223,6 +223,7 @@ func priceSubcommand(conn *grpc.ClientConn) {
 }
 
 func main() {
+	flag.Parse()
 	parseArguments()
 
 	// Parse credentials type from the command line to determine if xDS
