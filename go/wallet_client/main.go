@@ -136,7 +136,15 @@ func handleBalanceResponse(r *walletpb.BalanceResponse) {
 }
 
 // balanceSubcommand handles the 'balance' subcommand.
-func balanceSubcommand(conn *grpc.ClientConn) {
+func balanceSubcommand(opts []grpc.DialOption) {
+	dialCtx, dialCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer dialCancel()
+	conn, err := grpc.DialContext(dialCtx, args.walletServer, opts...)
+	if err != nil {
+		log.Fatalf("Failed to connect to the Wallet server: %v", err)
+	}
+	defer conn.Close()
+
 	c := walletpb.NewWalletClient(conn)
 	md, err := createMetaData()
 	if err != nil {
@@ -183,7 +191,15 @@ func balanceSubcommand(conn *grpc.ClientConn) {
 }
 
 // priceSubcommand handles the 'price' subcommand.
-func priceSubcommand(conn *grpc.ClientConn) {
+func priceSubcommand(opts []grpc.DialOption) {
+	dialCtx, dialCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer dialCancel()
+	conn, err := grpc.DialContext(dialCtx, args.statsServer, opts...)
+	if err != nil {
+		log.Fatalf("Failed to connect to the Wallet server: %v", err)
+	}
+	defer conn.Close()
+
 	c := statspb.NewStatsClient(conn)
 	md, err := createMetaData()
 	if err != nil {
@@ -253,17 +269,9 @@ func main() {
 		defer sd.StopMetricsExporter()
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	conn, err := grpc.DialContext(ctx, args.walletServer, opts...)
-	if err != nil {
-		log.Fatalf("Failed to connect to the Wallet server: %v", err)
-	}
-	defer conn.Close()
-
 	if args.subcommand == "balance" {
-		balanceSubcommand(conn)
+		balanceSubcommand(opts)
 		return
 	}
-	priceSubcommand(conn)
+	priceSubcommand(opts)
 }
