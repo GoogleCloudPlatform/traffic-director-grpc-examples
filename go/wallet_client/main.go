@@ -62,6 +62,7 @@ type arguments struct {
 	gcpClientProject string
 	route            string
 	creds            string
+	affinity         bool
 }
 
 var args arguments
@@ -77,6 +78,7 @@ func parseArguments() {
 	flags.StringVar(&args.gcpClientProject, "gcp_client_project", "", "if set, metrics and traces will be sent to Cloud Monitoring and Cloud Trace")
 	flags.StringVar(&args.route, "route", "", "a string value to set for the 'route' header, unset by default")
 	flags.StringVar(&args.creds, "creds", "insecure", "type of transport credentials to use. Supported values include 'xds' and 'insecure', defaults to 'insecure'")
+	flags.BoolVar(&args.affinity, "affinity", false, "if the requests will be sent with session affinity. defaults false")
 	flags.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), "Usage of %s:\n", os.Args[0])
 		fmt.Fprintf(flag.CommandLine.Output(), `
@@ -115,7 +117,13 @@ flags
 	}
 }
 
-// createMetaData creates the metadata for an outgoing request based on the user.
+const (
+	affinityMDKey   = "session_id"
+	affinityMDValue = "1234"
+)
+
+// createMetaData creates the metadata for an outgoing request based on the
+// flags.
 func createMetaData() (metadata.MD, error) {
 	md, ok := users[args.user]
 	if !ok {
@@ -123,6 +131,9 @@ func createMetaData() (metadata.MD, error) {
 	}
 	if args.route != "" {
 		md["route"] = args.route
+	}
+	if args.affinity {
+		md[affinityMDKey] = affinityMDValue
 	}
 	return metadata.New(md), nil
 }
