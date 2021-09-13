@@ -58,15 +58,20 @@ class WalletClient {
     if (user == "Alice") {
       context.AddMetadata("authorization", "2bd806c9");
       context.AddMetadata("membership", "premium");
+      if (affinity) {
+        // use something unique per user as session id.
+        context.AddMetadata("session_id", "11111111");
+      }
     } else {
       context.AddMetadata("authorization", "81b637d8");
       context.AddMetadata("membership", "normal");
+      if (affinity) {
+        // use something unique per user as session id.
+        context.AddMetadata("session_id", "22222222");
+      }
     }
     if (route != "") {
       context.AddMetadata("route", route);
-    }
-    if (affinity) {
-      context.AddMetadata("session_id", "1234");
     }
     Status status = stub_->FetchBalance(&context, request, &response);
     if (status.ok()) {
