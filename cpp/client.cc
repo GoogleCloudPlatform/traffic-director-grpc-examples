@@ -56,20 +56,18 @@ class WalletClient {
     ClientContext context;
     context.set_wait_for_ready(true);
     if (user == "Alice") {
-      std::string token = "2bd806c9";
-      context.AddMetadata("authorization", token);
+      context.AddMetadata("authorization", "2bd806c9");
       context.AddMetadata("membership", "premium");
       if (affinity) {
         // use something unique per user as session id.
-        context.AddMetadata("session_id", token);
+        context.AddMetadata("session_id", "11111111");
       }
     } else {
-      std::string token = "81b637d8";
-      context.AddMetadata("authorization", token);
+      context.AddMetadata("authorization", "81b637d8");
       context.AddMetadata("membership", "normal");
       if (affinity) {
         // use something unique per user as session id.
-        context.AddMetadata("session_id", token);
+        context.AddMetadata("session_id", "22222222");
       }
     }
     if (route != "") {
