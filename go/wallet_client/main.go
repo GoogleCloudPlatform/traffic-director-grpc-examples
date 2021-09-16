@@ -117,10 +117,12 @@ flags
 	}
 }
 
-const (
-	affinityMDKey   = "session_id"
-	affinityMDValue = "1234"
-)
+const affinityMDKey = "session_id"
+
+var affinityMDValues = map[string]string{
+	"Alice": "11111111",
+	"Bob":   "22222222",
+}
 
 // createMetaData creates the metadata for an outgoing request based on the
 // flags.
@@ -133,7 +135,7 @@ func createMetaData() (metadata.MD, error) {
 		md["route"] = args.route
 	}
 	if args.affinity {
-		md[affinityMDKey] = affinityMDValue
+		md[affinityMDKey] = affinityMDValues[args.user]
 	}
 	return metadata.New(md), nil
 }
