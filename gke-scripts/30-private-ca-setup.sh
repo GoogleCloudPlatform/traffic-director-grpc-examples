@@ -1,5 +1,9 @@
 #! /bin/bash
 
+set -euxo pipefail
+
+. ./00-common-env.sh
+
 function create_private_ca_resources {
   # Create a ROOT CA.
   gcloud beta privateca roots create ${ROOT_CA_NAME} \

@@ -29,28 +29,27 @@ Execute the following steps in the given order:
    to demonstrate that 'FetchBalance' gets responses from 'wallet-v1' (40%)
    and 'wallet-v2' (60%).
 
-#### Java
 ```shell
-/build/install/wallet/bin/client balance --creds=xds --wallet_server="xds:///wallet.grpcwallet.io" --unary_watch=true
+./wallet-client balance --creds=xds --wallet_server="xds:///wallet.grpcwallet.io" --unary_watch=true
 ```
+
  * The following command calls the streaming RPC 'WatchBalance' from 'wallet-service'.
    The RPC path matches the service prefix, so all requests are sent to 'wallet-v2'.
 
-#### Java
 ```shell
-/build/install/wallet/bin/client balance --creds=xds --wallet_server="xds:///wallet.grpcwallet.io" --watch=true
+./wallet-client balance --creds=xds --wallet_server="xds:///wallet.grpcwallet.io" --watch=true
+
 ```
  * The following commands call 'WatchPrice' from 'stats-service'. It sends the 
    user's membership (premium or not) in metadata. Premium requests are all sent
    to 'stats-premium' and get faster responses. Alice's requests always go to 
    premium and Bob's go to regular.
 
-
-#### Java
 ```shell
-/build/install/wallet/bin/client price --creds=xds --stats_server="xds:///stats.grpcwallet.io" --watch=true --user=Bob
-/build/install/wallet/bin/client price --creds=xds --stats_server="xds:///stats.grpcwallet.io" --watch=true --user=Alice
+./wallet-client price --creds=xds --stats_server="xds:///stats.grpcwallet.io" --watch=true --user=Bob
+./wallet-client price --creds=xds --stats_server="xds:///stats.grpcwallet.io" --watch=true --user=Alice
 ```
+
 ## Cleanup
 
 To clean up all the artifacts created run `./cleanup.sh` 

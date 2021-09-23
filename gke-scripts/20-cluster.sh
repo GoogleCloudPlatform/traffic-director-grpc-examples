@@ -1,5 +1,9 @@
 #! /bin/bash
 
+set -euxo pipefail
+
+. ./00-common-env.sh
+
 function create_cluster {
   gcloud beta container clusters create ${CLUSTER_NAME} \
     --zone=${CLUSTER_ZONE} \

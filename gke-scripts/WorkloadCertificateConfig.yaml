@@ -1,0 +1,40 @@
+apiVersion: security.cloud.google.com/v1alpha1
+kind: WorkloadCertificateConfig
+metadata:
+  name: default
+spec:
+  # Required. The SPIFFE trust domain. This must match your clusters
+  # Workload Identity pool.
+  trustDomain: ${PROJECT_ID}.svc.id.goog
+
+  # Required. The CA service that issues your certificates.
+  certificateAuthorityConfig:
+    certificateAuthorityServiceConfig:
+      endpointURI: ${SUBORDINATE_CA_URI}
+
+  # Required. The key algorithm to use. Choice of RSA or ECDSA.
+  #
+  # To maximize compatibility with various TLS stacks, your workloads
+  # should use keys of the same family as your root and subordinate CAs.
+  #
+  # To use RSA, specify configuration such as:
+  #   keyAlgorithm:
+  #     rsa:
+  #       modulusSize: 4096
+  #
+  # Currently, the supported ECDSA curves are "P256" and "P384", and the
+  # supported RSA modulus sizes are 2048, 3072 and 4096.
+  keyAlgorithm:
+    rsa:
+      modulusSize: 4096
+
+  # Optional. Validity duration of issued certificates, in seconds.
+  #
+  # Defaults to 86400 (1 day) if not specified.
+  validityDurationSeconds: 86400
+
+  # Optional. Try to start rotating the certificate once this
+  # percentage of validityDurationSeconds is remaining.
+  #
+  # Defaults to 50 if not specified.
+  rotationWindowPercentage: 50

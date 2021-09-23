@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Basic project level configuration
+export ME="YOUR_GOOGLE_EMAIL"
 export PROJECT_ID="YOUR_PROJECT_ID"
 export PROJECT_NUM=$(gcloud projects describe ${PROJECT_ID} --format="value(projectNumber)")
 export GSA_EMAIL=${PROJECT_NUM}-compute@developer.gserviceaccount.com
@@ -27,7 +28,7 @@ export ACCOUNT_ADMIN_PORT="50056"
 export ACCOUNT_NEG_NAME="account-neg"
 export ACCOUNT_SERVICE_IMAGE="gcr.io/${PROJECT_ID}/psms-wallet-example:1.00"
 export ACCOUNT_BACKEND_SERVICE_NAME="account-backend-service"
-export ACCOUNT_SERVER_CMD="/build/install/wallet/bin/account-server"
+export ACCOUNT_SERVER_CMD="./account-server"
 
 # Kubernetes and Traffic Director configuration for the Stats service
 export STATS_SERVICE_NAME="stats-service"
@@ -38,7 +39,7 @@ export STATS_ADMIN_PORT="50054"
 export STATS_NEG_NAME="stats-neg"
 export STATS_SERVICE_IMAGE="gcr.io/${PROJECT_ID}/psms-wallet-example:1.00"
 export STATS_BACKEND_SERVICE_NAME="stats-backend-service"
-export STATS_SERVER_CMD="/build/install/wallet/bin/stats-server"
+export STATS_SERVER_CMD="./stats-server"
 
 # Kubernetes and Traffic Director configuration for the Stats Premium service
 export STATS_PREMIUM_SERVICE_NAME="stats-premium-service"
@@ -59,7 +60,7 @@ export WALLET_V1_ADMIN_PORT="50052"
 export WALLET_V1_NEG_NAME="wallet-v1-neg"
 export WALLET_V1_SERVICE_IMAGE="gcr.io/${PROJECT_ID}/psms-wallet-example:1.00"
 export WALLET_V1_BACKEND_SERVICE_NAME="wallet-v1-backend-service"
-export WALLET_SERVER_CMD="/build/install/wallet/bin/wallet-server"
+export WALLET_SERVER_CMD="./wallet-server"
 
 # Kubernetes and Traffic Director configuration for the Wallet V2 service
 export WALLET_V2_SERVICE_NAME="wallet-v2-service"
