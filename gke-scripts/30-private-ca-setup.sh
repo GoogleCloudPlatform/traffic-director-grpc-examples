@@ -1,20 +1,30 @@
 #! /bin/bash
 
+set -euxo pipefail
+
+. ./00-common-env.sh
+
 function create_private_ca_resources {
   # Create a ROOT CA.
-  gcloud beta privateca roots create ${ROOT_CA_NAME} \
+  gcloud privateca pools create ${ROOT_CA_POOL_NAME} \
+    --location ${ROOT_CA_POOL_LOCATION} \
+    --tier enterprise
+  gcloud privateca roots create ${ROOT_CA_NAME} \
+    --pool ${ROOT_CA_POOL_NAME}
     --subject "CN=${ROOT_CA_NAME}, O=${ROOT_CA_ORGANIZATION}" \
     --max-chain-length=1 \
-    --location ${ROOT_CA_LOCATION} \
-    --tier enterprise
+    --location ${ROOT_CA_POOL_LOCATION} \
 
   # Create a subordinate CA.
-  gcloud beta privateca subordinates create ${SUBORDINATE_CA_NAME} \
-    --issuer ${ROOT_CA_NAME} \
-    --issuer-location ${ROOT_CA_LOCATION} \
-    --subject "CN=${SUBORDINATE_CA_NAME}, O=${SUBORDINATE_CA_ORGANIZATION}" \
-    --location ${SUBORDINATE_CA_LOCATION} \
+  gcloud privateca pools create ${SUBORDINATE_CA_POOL_NAME} \
+    --location ${SUBORDINATE_CA_POOL_LOCATION} \
     --tier devops
+  gcloud privateca subordinates create ${SUBORDINATE_CA_NAME} \
+    --pool ${SUBORDINATE_CA_POOL_NAME} \
+    --location ${SUBORDINATE_CA_POOL_LOCATION} \
+    --issuer-pool ${ROOT_CA_POOL_NAME} \
+    --issuer-location ${ROOT_CA_POOL_LOCATION} \
+    --subject "CN=SUBORDINATE_CA_NAME, O=SUBORDINATE_CA_ORGANIZATION" \
 
   # Grant PrivateCA admin to yourself so that you can grant other privileges to
   # the GKE service account.
