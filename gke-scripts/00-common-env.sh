@@ -87,13 +87,15 @@ export CLIENT_IMAGE="gcr.io/${PROJECT_ID}/psms-wallet-example:1.00"
 
 # Private CA resources
 export ROOT_CA_NAME="wallet-root-ca"
-export ROOT_CA_LOCATION="us-east1"
 export ROOT_CA_ORGANIZATION="TestCorpLLC"
-export ROOT_CA_URI="//privateca.googleapis.com/projects/${PROJECT_ID}/locations/${ROOT_CA_LOCATION}/certificateAuthorities/${ROOT_CA_NAME}"
+export ROOT_CA_POOL_LOCATION="us-east1"
+export ROOT_CA_POOL_NAME="wallet-root-ca-pool"
+export ROOT_CA_POOL_URI="//privateca.googleapis.com/projects/${PROJECT_ID}/locations/${ROOT_CA_POOL_LOCATION}/caPools/${ROOT_CA_POOL_NAME}"
 export SUBORDINATE_CA_NAME="wallet-subordinate-ca"
 export SUBORDINATE_CA_ORGANIZATION="TestCorpLLC"
-export SUBORDINATE_CA_LOCATION="us-east1"
-export SUBORDINATE_CA_URI="//privateca.googleapis.com/projects/${PROJECT_ID}/locations/${SUBORDINATE_CA_LOCATION}/certificateAuthorities/${SUBORDINATE_CA_NAME}"
+export SUBORDINATE_CA_POOL_NAME="wallet-subordinate-ca-pool"
+export SUBORDINATE_CA_POOL_LOCATION="us-east1"
+export SUBORDINATE_CA_POOL_URI="//privateca.googleapis.com/projects/${PROJECT_ID}/locations/${SUBORDINATE_CA_POOL_LOCATION}/caPools/${SUBORDINATE_CA_POOL_NAME}"
 
 # Security related configuration
 export SERVER_MTLS_POLICY_NAME="server-mtls-policy"
