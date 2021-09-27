@@ -114,8 +114,6 @@ healthChecks:
 loadBalancingScheme: INTERNAL_SELF_MANAGED
 name: grpcwallet-${hostname_suffix}-affinity-service
 portName: grpcwallet-${service_type}-port
-protocol: GRPC
-sessionAffinity: NONE
-localityLbPolicy: ROUND_ROBIN"
+protocol: GRPC"
     gcloud compute backend-services import grpcwallet-${hostname_suffix}-affinity-service --global <<< "${backend_config}"
 fi
