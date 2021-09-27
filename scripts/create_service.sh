@@ -98,10 +98,6 @@ fi
 
 gcloud compute backend-services import grpcwallet-${hostname_suffix}-service --global <<< "${backend_config}"
 
-# The following block creates a backend service named grpcwallet-wallet-v1-affinity-service.
-# However, we do not configure affinity for this BS inititally so that clients that don't
-# support session-affinity feature can still work properly for all examples other than 
-# the affinity example.
 if [ "${hostname_suffix}" = "wallet-v1" ]; then
     backend_config="backends:
 - balancingMode: UTILIZATION
@@ -114,6 +110,10 @@ healthChecks:
 loadBalancingScheme: INTERNAL_SELF_MANAGED
 name: grpcwallet-${hostname_suffix}-affinity-service
 portName: grpcwallet-${service_type}-port
-protocol: GRPC"
-    gcloud compute backend-services import grpcwallet-${hostname_suffix}-affinity-service --global <<< "${backend_config}"
+protocol: GRPC
+sessionAffinity: HEADER_FIELD
+localityLbPolicy: RING_HASH
+consistentHash:
+  httpHeaderName: session_id"
+gcloud compute backend-services import grpcwallet-${hostname_suffix}-affinity-service --global <<< "${backend_config}"
 fi
