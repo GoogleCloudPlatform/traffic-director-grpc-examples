@@ -93,12 +93,17 @@ public class Client {
     if ("Alice".equals(user)) {
       headers.put(WalletInterceptors.TOKEN_MD_KEY, ALICE_TOKEN);
       headers.put(WalletInterceptors.MEMBERSHIP_MD_KEY, "premium");
+      if (affinity) {
+        // use something unique per user as session id.
+        headers.put(SESSION_ID_MD_KEY, "11111111");
+      }
     } else {
       headers.put(WalletInterceptors.TOKEN_MD_KEY, BOB_TOKEN);
       headers.put(WalletInterceptors.MEMBERSHIP_MD_KEY, "normal");
-    }
-    if (affinity) {
-      headers.put(SESSION_ID_MD_KEY, "1234");
+      if (affinity) {
+        // use something unique per user as session id.
+        headers.put(SESSION_ID_MD_KEY, "22222222");
+      }
     }
     if (!route.isEmpty()) {
       headers.put(ROUTE_MD_KEY, route);
