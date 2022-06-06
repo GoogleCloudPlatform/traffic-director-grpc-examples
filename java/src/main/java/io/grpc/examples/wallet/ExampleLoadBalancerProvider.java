@@ -1,5 +1,22 @@
+/*
+ * Copyright 2022 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package io.grpc.examples.wallet;
 
+import com.google.common.collect.ImmutableMap;
 import io.grpc.LoadBalancer;
 import io.grpc.LoadBalancer.Helper;
 import io.grpc.LoadBalancerProvider;
@@ -14,8 +31,8 @@ import java.util.Map;
 /**
  * This {@link LoadBalancerProvider} provides an example {@link LoadBalancer} implementation that
  * delegates to round_robin and simply prints to System.out when it needs to handle resolved
- * addresses. The purpose of this implementation is to demonstrate how to configure a custom
- * {@link LoadBalancer} in Traffic Director, as explained in:
+ * addresses. The purpose of this implementation is to demonstrate how to configure a custom {@link
+ * LoadBalancer} in Traffic Director, as explained in:
  * https://cloud.google.com/traffic-director/docs/proxyless-configure-advanced-traffic-management
  */
 public class ExampleLoadBalancerProvider extends LoadBalancerProvider {
@@ -23,15 +40,26 @@ public class ExampleLoadBalancerProvider extends LoadBalancerProvider {
   @Override
   public NameResolver.ConfigOrError parseLoadBalancingPolicyConfig(
       Map<String, ?> rawLoadBalancingPolicyConfig) {
-    // The configuration map should have a "message" entry with a message that is printed out every
-    // time this load balancer handles resolved addresses.
-    String message = (String) rawLoadBalancingPolicyConfig.get("message");
-    if (message == null) {
-      return NameResolver.ConfigOrError.fromError(
-          Status.INVALID_ARGUMENT.withDescription("no 'message' defined"));
-    }
+    ConfigOrError response = null;
+    try {
+      LoadBalancerProvider roundRobinProvider = LoadBalancerRegistry.getDefaultRegistry()
+          .getProvider("round_robin");
+      ConfigOrError roundRobinConfig = roundRobinProvider.parseLoadBalancingPolicyConfig(
+          ImmutableMap.of());
 
-    return NameResolver.ConfigOrError.fromConfig(new ExampleLoadBalancerConfig(message));
+      // The configuration map should have a "message" entry with a message that is printed out
+      // every time this load balancer handles resolved addresses.
+      String message = (String) rawLoadBalancingPolicyConfig.get("message");
+      if (message == null) {
+        response = NameResolver.ConfigOrError.fromError(
+            Status.INVALID_ARGUMENT.withDescription("no 'message' defined"));
+      }
+      response = NameResolver.ConfigOrError.fromConfig(
+          new ExampleLoadBalancerConfig(message, roundRobinProvider, roundRobinConfig));
+    } catch (RuntimeException e) {
+      response = NameResolver.ConfigOrError.fromError(Status.fromThrowable(e));
+    }
+    return response;
   }
 
   /**
@@ -55,9 +83,7 @@ public class ExampleLoadBalancerProvider extends LoadBalancerProvider {
 
   @Override
   public LoadBalancer newLoadBalancer(Helper helper) {
-    return new ExampleLoadBalancer(helper,
-        LoadBalancerRegistry.getDefaultRegistry().getProvider("round_robin")
-            .newLoadBalancer(helper));
+    return new ExampleLoadBalancer(helper);
   }
 
   /**
@@ -66,9 +92,14 @@ public class ExampleLoadBalancerProvider extends LoadBalancerProvider {
   static class ExampleLoadBalancerConfig {
 
     final String message;
+    final LoadBalancerProvider roundRobinProvider;
+    final ConfigOrError roundRobinConfig;
 
-    ExampleLoadBalancerConfig(String message) {
+    ExampleLoadBalancerConfig(String message, LoadBalancerProvider roundRobinProvider,
+        ConfigOrError roundRobinConfig) {
       this.message = message;
+      this.roundRobinProvider = roundRobinProvider;
+      this.roundRobinConfig = roundRobinConfig;
     }
   }
 
@@ -78,10 +109,11 @@ public class ExampleLoadBalancerProvider extends LoadBalancerProvider {
    */
   static class ExampleLoadBalancer extends ForwardingLoadBalancer {
 
-    private final LoadBalancer delegateLb;
+    private final Helper helper;
+    private LoadBalancer delegateLb;
 
-    ExampleLoadBalancer(Helper helper, LoadBalancer delegateLb) {
-      this.delegateLb = delegateLb;
+    ExampleLoadBalancer(Helper helper) {
+      this.helper = helper;
     }
 
     @Override
@@ -93,10 +125,11 @@ public class ExampleLoadBalancerProvider extends LoadBalancerProvider {
     public void handleResolvedAddresses(ResolvedAddresses resolvedAddresses) {
       ExampleLoadBalancerConfig config
           = (ExampleLoadBalancerConfig) resolvedAddresses.getLoadBalancingPolicyConfig();
+      this.delegateLb = config.roundRobinProvider.newLoadBalancer(helper);
       System.out.println(
           "ExampleLoadBalancer handling resolved addresses [message: '" + config.message + "']");
       delegateLb.handleResolvedAddresses(resolvedAddresses.toBuilder()
-          .setLoadBalancingPolicyConfig(ConfigOrError.fromConfig("no config")).build());
+          .setLoadBalancingPolicyConfig(config.roundRobinConfig).build());
     }
   }
 }
