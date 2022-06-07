@@ -52,7 +52,7 @@ public class ExampleLoadBalancerProvider extends LoadBalancerProvider {
       String message = (String) rawLoadBalancingPolicyConfig.get("message");
       if (message == null) {
         response = NameResolver.ConfigOrError.fromError(
-            Status.INVALID_ARGUMENT.withDescription("no 'message' defined"));
+            Status.UNAVAILABLE.withDescription("no 'message' defined"));
       }
       response = NameResolver.ConfigOrError.fromConfig(
           new ExampleLoadBalancerConfig(message, roundRobinProvider, roundRobinConfig));
