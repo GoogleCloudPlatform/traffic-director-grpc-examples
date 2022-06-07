@@ -57,7 +57,9 @@ public class ExampleLoadBalancerProvider extends LoadBalancerProvider {
       response = NameResolver.ConfigOrError.fromConfig(
           new ExampleLoadBalancerConfig(message, roundRobinProvider, roundRobinConfig));
     } catch (RuntimeException e) {
-      response = NameResolver.ConfigOrError.fromError(Status.fromThrowable(e));
+      response = NameResolver.ConfigOrError.fromError(
+          Status.UNAVAILABLE.withDescription("Failed to parse example LB service config")
+              .withCause(e));
     }
     return response;
   }
