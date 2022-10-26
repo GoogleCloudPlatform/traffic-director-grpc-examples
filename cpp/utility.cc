@@ -61,8 +61,7 @@ std::shared_ptr<grpc::ChannelCredentials> GetChannelCredetials(
   if (creds_type == kInsecureCreds) {
     return grpc::InsecureChannelCredentials();
   } else if (creds_type == kXdsCreds) {
-    return grpc::experimental::XdsCredentials(
-        grpc::InsecureChannelCredentials());
+    return grpc::XdsCredentials(grpc::InsecureChannelCredentials());
   }
   assert(0);
 }
@@ -72,7 +71,7 @@ std::unique_ptr<grpc::ServerBuilder> GetServerBuilder(
   if (creds_type == kInsecureCreds) {
     return absl::make_unique<grpc::ServerBuilder>();
   } else if (creds_type == kXdsCreds) {
-    return absl::make_unique<grpc::experimental::XdsServerBuilder>();
+    return absl::make_unique<grpc::XdsServerBuilder>();
   }
   assert(0);
 }
@@ -82,8 +81,7 @@ std::shared_ptr<grpc::ServerCredentials> GetServerCredentials(
   if (creds_type == kInsecureCreds) {
     return grpc::InsecureServerCredentials();
   } else if (creds_type == kXdsCreds) {
-    return grpc::experimental::XdsServerCredentials(
-        grpc::InsecureServerCredentials());
+    return grpc::XdsServerCredentials(grpc::InsecureServerCredentials());
   }
   assert(0);
 }
