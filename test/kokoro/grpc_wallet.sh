@@ -13,8 +13,9 @@ popd
 
 # Download the latest Go version in tmpdir and modify $PATH to include the
 # extracted `go` binary.
-walletBaseDir=${PWD}
-cd ${TMPDIR}
+walletBaseDir="${PWD}"
+kokoroTmpDir="${TMPDIR:-/tmpfs/tmp}"
+cd "${kokoroTmpDir}"
 wget https://dl.google.com/go/go1.16.5.linux-amd64.tar.gz
 tar -xvf go1.16.5.linux-amd64.tar.gz
 export GOROOT=${PWD}/go
